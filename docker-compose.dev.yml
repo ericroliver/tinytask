@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  tinytask-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: tinytask-mcp-dev
+    ports:
+      - "3000:3000"
+      - "9229:9229"  # Debug port
+    volumes:
+      - ./src:/app/src:ro
+      - ./data:/data
+      - /app/node_modules
+    environment:
+      TINYTASK_MODE: sse
+      TINYTASK_PORT: 3000
+      TINYTASK_HOST: 0.0.0.0
+      TINYTASK_DB_PATH: /data/tinytask.db
+      TINYTASK_LOG_LEVEL: debug
+      NODE_ENV: development
+    command: npm run dev
+    networks:
+      - tinytask-network
+
+networks:
+  tinytask-network:
+    driver: bridge

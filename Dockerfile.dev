@@ -1,0 +1,31 @@
+# Development Dockerfile with hot reload
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
+
+# Create data directory
+RUN mkdir -p /data && chown node:node /data
+
+# Copy package files
+COPY package*.json tsconfig.json ./
+
+# Install all dependencies (including dev)
+RUN npm install
+
+# Copy source code
+COPY src ./src
+
+# Use non-root user
+USER node
+
+# Expose SSE port and debug port
+EXPOSE 3000 9229
+
+# Use dumb-init to handle signals
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start in development mode with TypeScript watch
+CMD ["npm", "run", "dev"]
