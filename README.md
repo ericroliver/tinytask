@@ -1,5 +1,10 @@
 # TinyTask MCP
 
+## NOTE:
+This is the simplest task management system I could create. I need this for experimentation in a another research project exploring agentic team workflows, collaboration, etc. Probably the biggest gaps are that there is no auth or the concept of users. Tasks are assigned to arbitrary names and the name becomes the queue of work for the name. This project was written entirely using AI (specifically RooCode and Anthropic). From start to finish the initial project took just a few hours and cost about $15.50 in tokens.
+
+## Description
+
 A minimal task management system designed for LLM agent collaboration, exposed as a Model Context Protocol (MCP) server.
 
 ## Features
