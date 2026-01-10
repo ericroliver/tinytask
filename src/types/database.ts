@@ -8,6 +8,7 @@ export interface Task {
   description: string | null;
   status: 'idle' | 'working' | 'complete';
   assigned_to: string | null;
+  previous_assigned_to: string | null;
   created_by: string | null;
   priority: number;
   tags: string | null; // JSON array
