@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     description TEXT,
     status TEXT NOT NULL CHECK(status IN ('idle', 'working', 'complete')),
     assigned_to TEXT,
+    previous_assigned_to TEXT,
     created_by TEXT,
     priority INTEGER DEFAULT 0,
     tags TEXT,

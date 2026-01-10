@@ -138,8 +138,18 @@ export class TaskService {
       }
 
       if (updates.assigned_to !== undefined) {
+        // Check if assigned_to is actually changing
+        const newAssignedTo = updates.assigned_to || null;
+        const currentAssignedTo = existing.assigned_to;
+        
+        if (newAssignedTo !== currentAssignedTo) {
+          // Save current assigned_to to previous_assigned_to
+          fields.push('previous_assigned_to = ?');
+          values.push(currentAssignedTo);
+        }
+        
         fields.push('assigned_to = ?');
-        values.push(updates.assigned_to || null);
+        values.push(newAssignedTo);
       }
 
       if (updates.priority !== undefined) {
@@ -325,12 +335,12 @@ export class TaskService {
         );
       }
 
-      // Update task assignment and status
+      // Update task assignment and status, tracking previous assignee
       this.db.execute(
         `UPDATE tasks
-         SET assigned_to = ?, status = 'idle', updated_at = CURRENT_TIMESTAMP
+         SET assigned_to = ?, previous_assigned_to = ?, status = 'idle', updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
-        [newAgent, taskId]
+        [newAgent, currentAgent, taskId]
       );
 
       // Add handoff comment
