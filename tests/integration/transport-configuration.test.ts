@@ -39,7 +39,7 @@ describe('Transport Configuration', () => {
       process.env.TINYTASK_ENABLE_SSE = 'true';
 
       const port = PORTS.SSE_ENABLED;
-      const serverPromise = startHttpServer(
+      const _serverPromise = startHttpServer(
         client.taskService,
         client.commentService,
         client.linkService,
@@ -66,7 +66,7 @@ describe('Transport Configuration', () => {
       process.env.TINYTASK_ENABLE_SSE = 'false';
 
       const port = PORTS.SSE_DISABLED;
-      const serverPromise = startHttpServer(
+      const _serverPromise = startHttpServer(
         client.taskService,
         client.commentService,
         client.linkService,

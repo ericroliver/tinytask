@@ -400,7 +400,7 @@ describe('Backward Compatibility', () => {
 
     it('should maintain same tool signatures', () => {
       // Verify task service methods have consistent signatures
-      const task = client.taskService.createTask(
+      const _task = client.taskService.createTask(
         createTestTask({ title: 'Signature test' })
       );
 

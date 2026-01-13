@@ -4,7 +4,7 @@
  * Story 1.9: Performance Testing and Comparison
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createTestClient, createTestTask, TestClient } from '../helpers/test-client.js';
+import { createTestClient, TestClient } from '../helpers/test-client.js';
 import { startSseServer } from '../../src/server/sse.js';
 import { startStreamableHttpServer } from '../../src/server/streamable-http.js';
 

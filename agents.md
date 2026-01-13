@@ -63,9 +63,12 @@ npm run format             # Format code with Prettier
 Before declaring any task complete, verify:
 1. ✅ Build succeeds: `npm run build`
 2. ✅ All tests pass: `npm test`
-3. ✅ Linting passes: `npm run lint`
+3. ✅ Linting passes: `npm run lint` - **Run this proactively, not just at the end**
 4. ✅ Code is formatted: `npm run format`
 5. ✅ No TypeScript compilation errors
+6. ✅ No unused imports, variables, or functions
+
+**Important**: Run `npm run lint` during development to catch issues early, not just as a final check. Address linter warnings immediately as part of your implementation, not as cleanup.
 
 ## Development Rules
 
@@ -106,6 +109,8 @@ Before declaring any task complete, verify:
 - Only use `await` on actual Promise-returning functions
 - Prefix unused test variables with underscore: `_variable`
 - Use proper type imports and exports
+- **Remove unused imports** - don't leave imports that aren't used in the file
+- **Remove unused functions** - delete helper functions that are never called
 
 #### Examples
 ```typescript
