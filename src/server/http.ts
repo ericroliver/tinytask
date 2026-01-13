@@ -3,6 +3,7 @@
  * Routes to appropriate HTTP transport based on configuration
  */
 
+import { Server as HttpServer } from 'http';
 import { logger } from '../utils/index.js';
 import { startSseServer, SseServerOptions } from './sse.js';
 import { startStreamableHttpServer, StreamableHttpServerOptions } from './streamable-http.js';
@@ -19,18 +20,19 @@ export interface HttpServerOptions extends SseServerOptions, StreamableHttpServe
 /**
  * Start HTTP transport with appropriate implementation
  * based on TINYTASK_ENABLE_SSE environment variable
- * 
+ *
  * @param taskService - Task management service
  * @param commentService - Comment management service
  * @param linkService - Link management service
  * @param options - Server configuration options
+ * @returns The HTTP server instance for cleanup
  */
 export async function startHttpServer(
   taskService: import('../services/task-service.js').TaskService,
   commentService: import('../services/comment-service.js').CommentService,
   linkService: import('../services/link-service.js').LinkService,
   options?: HttpServerOptions
-): Promise<void> {
+): Promise<HttpServer> {
   const enableSse = process.env.TINYTASK_ENABLE_SSE === 'true';
 
   if (enableSse) {

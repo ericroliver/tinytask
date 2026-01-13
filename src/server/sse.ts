@@ -6,6 +6,7 @@
 import express from 'express';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { Server as HttpServer } from 'http';
 import { logger } from '../utils/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createMcpServer } from './mcp-server.js';
@@ -20,13 +21,14 @@ export interface SseServerOptions {
 
 /**
  * Start the MCP server with SSE transport
+ * @returns The HTTP server instance for cleanup
  */
 export async function startSseServer(
   taskService: import('../services/task-service.js').TaskService,
   commentService: import('../services/comment-service.js').CommentService,
   linkService: import('../services/link-service.js').LinkService,
   options?: SseServerOptions
-): Promise<void> {
+): Promise<HttpServer> {
   const app = express();
   const port = options?.port ?? parseInt(process.env.TINYTASK_PORT || '3000');
   const host = options?.host ?? process.env.TINYTASK_HOST ?? '0.0.0.0';
@@ -455,6 +457,8 @@ export async function startSseServer(
 
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
+  
+  return httpServer;
 }
 
 /**

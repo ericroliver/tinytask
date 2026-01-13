@@ -72,7 +72,11 @@ export async function deleteCommentHandler(commentService: CommentService, param
       content: [
         {
           type: 'text' as const,
-          text: `Comment ${params.id} deleted successfully`,
+          text: JSON.stringify({
+            success: true,
+            message: `Comment ${params.id} deleted successfully`,
+            id: params.id,
+          }),
         },
       ],
     };

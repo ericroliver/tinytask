@@ -1,0 +1,52 @@
+{
+  "name": "tinytask-cli",
+  "version": "0.1.0",
+  "description": "Command-line client for TinyTask MCP server",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "tinytask": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "bundle": "node esbuild.config.mjs",
+    "sea:macos": "npm run bundle && node --experimental-sea-config sea-config.json && cp $(command -v node) dist/tinytask-macos && npx postject dist/tinytask-macos NODE_SEA_BLOB sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2 --macho-segment-name NODE_SEA && codesign --sign - --force dist/tinytask-macos",
+    "sea:linux": "npm run bundle && node --experimental-sea-config sea-config.json && cp $(command -v node) dist/tinytask-linux && npx postject dist/tinytask-linux NODE_SEA_BLOB sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2",
+    "sea:windows": "npm run bundle && node --experimental-sea-config sea-config.json && node -e \"require('fs').copyFileSync(process.execPath, 'dist/tinytask.exe')\" && npx postject dist/tinytask.exe NODE_SEA_BLOB sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2",
+    "package": "npm run sea:macos",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/**/*.ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "clean": "rm -rf dist sea-prep.blob",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "tinytask",
+    "cli",
+    "mcp",
+    "task-management"
+  ],
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.2",
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.3",
+    "commander": "^12.0.0",
+    "cosmiconfig": "^9.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "esbuild": "^0.20.0",
+    "eslint": "^8.0.0",
+    "postject": "^1.0.0-alpha.6",
+    "prettier": "^3.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  }
+}

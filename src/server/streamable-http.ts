@@ -6,6 +6,7 @@
 import express from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { Server as HttpServer } from 'http';
 import { logger } from '../utils/index.js';
 import { createMcpServer } from './mcp-server.js';
 
@@ -19,13 +20,14 @@ export interface StreamableHttpServerOptions {
 
 /**
  * Start the MCP server with Streamable HTTP transport
+ * @returns The HTTP server instance for cleanup
  */
 export async function startStreamableHttpServer(
   taskService: import('../services/task-service.js').TaskService,
   commentService: import('../services/comment-service.js').CommentService,
   linkService: import('../services/link-service.js').LinkService,
   options?: StreamableHttpServerOptions
-): Promise<void> {
+): Promise<HttpServer> {
   const app = express();
   const port = options?.port ?? parseInt(process.env.TINYTASK_PORT || '3000');
   const host = options?.host ?? process.env.TINYTASK_HOST ?? '0.0.0.0';
@@ -196,4 +198,6 @@ export async function startStreamableHttpServer(
 
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
+  
+  return httpServer;
 }
