@@ -18,8 +18,16 @@ export async function loadConfig(options: {
   const homeConfigPath = getConfigPath();
   try {
     const homeConfigContent = await fs.readFile(homeConfigPath, 'utf-8');
-    const homeConfig = JSON.parse(homeConfigContent);
-    config = { ...config, ...homeConfig };
+    try {
+      const homeConfig = JSON.parse(homeConfigContent);
+      config = { ...config, ...homeConfig };
+    } catch (parseError) {
+      // Invalid JSON in home config, try searching from current directory
+      const result = await explorer.search();
+      if (result?.config) {
+        config = { ...config, ...result.config };
+      }
+    }
   } catch (error) {
     // Home config doesn't exist, try searching from current directory
     try {
