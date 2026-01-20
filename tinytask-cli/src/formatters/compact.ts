@@ -45,7 +45,7 @@ export class CompactFormatter implements Formatter {
       const desc = l.description ? ` - ${l.description}` : '';
       lines.push(
         this.options.color
-          ? `  ${chalk.bold(`[${l.id}]`)} ${l.url} ${chalk.gray(desc)}${desc ? '' : ''} ${chalk.gray(`(${date})`)}`
+          ? `  ${chalk.bold(`[${l.id}]`)} ${l.url} ${chalk.gray(desc)} ${chalk.gray(`(${date})`)}`
           : `  [${l.id}] ${l.url}${desc} (${date})`
       );
     });

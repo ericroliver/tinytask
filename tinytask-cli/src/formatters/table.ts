@@ -173,7 +173,7 @@ export class TableFormatter implements Formatter {
       const c = comment as Record<string, unknown>;
       table.push([
         this.formatId(c.id as number),
-        c.created_by || this.options.color ? chalk.gray('Unknown') : 'Unknown',
+        c.created_by || (this.options.color ? chalk.gray('Unknown') : 'Unknown'),
         this.truncate(String(c.content), 38),
         this.formatDate(String(c.created_at)),
       ]);
@@ -221,7 +221,7 @@ export class TableFormatter implements Formatter {
       table.push([
         this.formatId(l.id as number),
         this.truncate(String(l.url), 38),
-        l.description ? this.truncate(String(l.description), 28) : this.options.color ? chalk.gray('-') : '-',
+        l.description ? this.truncate(String(l.description), 28) : (this.options.color ? chalk.gray('-') : '-'),
         this.formatDate(String(l.created_at)),
       ]);
     });
