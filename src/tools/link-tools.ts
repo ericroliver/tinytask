@@ -75,7 +75,11 @@ export async function deleteLinkHandler(linkService: LinkService, params: { id: 
       content: [
         {
           type: 'text' as const,
-          text: `Link ${params.id} deleted successfully`,
+          text: JSON.stringify({
+            success: true,
+            message: `Link ${params.id} deleted successfully`,
+            id: params.id,
+          }),
         },
       ],
     };

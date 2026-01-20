@@ -3,6 +3,7 @@
  * Tests Story 1.10: Verify existing deployments won't break
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { Server as HttpServer } from 'http';
 import { createTestClient, createTestTask, TestClient } from '../helpers/test-client.js';
 import { startHttpServer } from '../../src/server/http.js';
 import { startSseServer } from '../../src/server/sse.js';
@@ -22,13 +23,23 @@ const PORTS = {
 describe('Backward Compatibility', () => {
   let client: TestClient;
   let originalEnv: NodeJS.ProcessEnv;
+  let servers: HttpServer[] = [];
 
   beforeEach(() => {
     originalEnv = { ...process.env };
     client = createTestClient();
+    servers = [];
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Close all servers
+    for (const server of servers) {
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve());
+      });
+    }
+    servers = [];
+    
     process.env = originalEnv;
     client.cleanup();
   });
@@ -46,12 +57,13 @@ describe('Backward Compatibility', () => {
       process.env.TINYTASK_MODE = mode;
 
       const port = PORTS.SSE_LEGACY;
-      startHttpServer(
+      const server = await startHttpServer(
         client.taskService,
         client.commentService,
         client.linkService,
         { port, host: 'localhost' }
       );
+      servers.push(server);
 
       await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -70,12 +82,13 @@ describe('Backward Compatibility', () => {
       process.env.TINYTASK_ENABLE_SSE = 'true';
 
       const port = PORTS.SSE_EXPLICIT;
-      startSseServer(
+      const server = await startSseServer(
         client.taskService,
         client.commentService,
         client.linkService,
         { port, host: 'localhost' }
       );
+      servers.push(server);
 
       await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -93,12 +106,13 @@ describe('Backward Compatibility', () => {
 
       const port = PORTS.MODE_BOTH;
       // Test only the HTTP portion of 'both' mode
-      startHttpServer(
+      const server = await startHttpServer(
         client.taskService,
         client.commentService,
         client.linkService,
         { port, host: 'localhost' }
       );
+      servers.push(server);
 
       await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -121,17 +135,19 @@ describe('Backward Compatibility', () => {
 
   describe('SSE Transport - All Tools Work', () => {
     let port: number;
+    let server: HttpServer;
 
     beforeEach(async () => {
       port = PORTS.SSE_TOOLS;
       process.env.TINYTASK_ENABLE_SSE = 'true';
       
-      startSseServer(
+      server = await startSseServer(
         client.taskService,
         client.commentService,
         client.linkService,
         { port, host: 'localhost' }
       );
+      servers.push(server);
 
       await new Promise(resolve => setTimeout(resolve, 500));
     });
@@ -215,17 +231,19 @@ describe('Backward Compatibility', () => {
   describe('SSE Transport - All Resources Work', () => {
     let port: number;
     let taskId: number;
+    let server: HttpServer;
 
     beforeEach(async () => {
       port = PORTS.SSE_RESOURCES;
       process.env.TINYTASK_ENABLE_SSE = 'true';
       
-      startSseServer(
+      server = await startSseServer(
         client.taskService,
         client.commentService,
         client.linkService,
         { port, host: 'localhost' }
       );
+      servers.push(server);
 
       await new Promise(resolve => setTimeout(resolve, 500));
 

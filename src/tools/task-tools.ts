@@ -116,7 +116,11 @@ export async function deleteTaskHandler(taskService: TaskService, params: { id: 
       content: [
         {
           type: 'text' as const,
-          text: `Task ${params.id} deleted successfully`,
+          text: JSON.stringify({
+            success: true,
+            message: `Task ${params.id} deleted successfully`,
+            id: params.id,
+          }),
         },
       ],
     };
