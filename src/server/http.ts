@@ -31,15 +31,16 @@ export async function startHttpServer(
   taskService: import('../services/task-service.js').TaskService,
   commentService: import('../services/comment-service.js').CommentService,
   linkService: import('../services/link-service.js').LinkService,
+  queueService: import('../services/queue-service.js').QueueService,
   options?: HttpServerOptions
 ): Promise<HttpServer> {
   const enableSse = process.env.TINYTASK_ENABLE_SSE === 'true';
 
   if (enableSse) {
     logger.info('🔄 Using SSE transport (legacy mode)');
-    return startSseServer(taskService, commentService, linkService, options);
+    return startSseServer(taskService, commentService, linkService, queueService, options);
   } else {
     logger.info('✨ Using Streamable HTTP transport');
-    return startStreamableHttpServer(taskService, commentService, linkService, options);
+    return startStreamableHttpServer(taskService, commentService, linkService, queueService, options);
   }
 }

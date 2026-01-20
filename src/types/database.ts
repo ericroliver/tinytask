@@ -12,6 +12,8 @@ export interface Task {
   created_by: string | null;
   priority: number;
   tags: string | null; // JSON array
+  parent_task_id: number | null;
+  queue_name: string | null;
   created_at: string;
   updated_at: string;
   archived_at: string | null;

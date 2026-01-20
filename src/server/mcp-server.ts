@@ -4,7 +4,7 @@
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { TaskService, CommentService, LinkService } from '../services/index.js';
+import { TaskService, CommentService, LinkService, QueueService } from '../services/index.js';
 import { registerToolHandlers } from '../tools/index.js';
 import { registerResourceHandlers } from '../resources/index.js';
 
@@ -14,7 +14,8 @@ import { registerResourceHandlers } from '../resources/index.js';
 export function createMcpServer(
   taskService: TaskService,
   commentService: CommentService,
-  linkService: LinkService
+  linkService: LinkService,
+  queueService: QueueService
 ): Server {
   // Create server with capabilities
   const server = new Server(
@@ -31,10 +32,10 @@ export function createMcpServer(
   );
 
   // Register all tool handlers
-  registerToolHandlers(server, taskService, commentService, linkService);
+  registerToolHandlers(server, taskService, commentService, linkService, queueService);
 
   // Register all resource handlers
-  registerResourceHandlers(server, taskService, commentService, linkService);
+  registerResourceHandlers(server, taskService, commentService, linkService, queueService);
 
   return server;
 }

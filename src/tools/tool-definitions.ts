@@ -17,7 +17,9 @@ export const toolSchemas = {
     created_by: z.string().optional().describe('Agent name creating the task'),
     priority: z.number().optional().describe('Priority level (default: 0)'),
     tags: z.array(z.string()).optional().describe('Array of tags'),
-  }),
+    parent_task_id: z.number().optional().describe('Parent task ID (creates subtask)'),
+    queue_name: z.string().optional().describe('Queue name (dev, product, qa, etc.)'),
+  }).strict(),
 
   update_task: z.object({
     id: z.number().describe('Task ID'),
@@ -27,19 +29,21 @@ export const toolSchemas = {
     assigned_to: z.string().optional().describe('New assignee'),
     priority: z.number().optional().describe('New priority'),
     tags: z.array(z.string()).optional().describe('New tags (replaces existing)'),
-  }),
+    parent_task_id: z.number().optional().describe('New parent task ID (null to make top-level)'),
+    queue_name: z.string().optional().describe('New queue name'),
+  }).strict(),
 
   get_task: z.object({
     id: z.number().describe('Task ID'),
-  }),
+  }).strict(),
 
   delete_task: z.object({
     id: z.number().describe('Task ID'),
-  }),
+  }).strict(),
 
   archive_task: z.object({
     id: z.number().describe('Task ID'),
-  }),
+  }).strict(),
 
   list_tasks: z.object({
     assigned_to: z.string().optional().describe('Filter by assignee'),
@@ -47,22 +51,88 @@ export const toolSchemas = {
     include_archived: z.boolean().optional().describe('Include archived tasks'),
     limit: z.number().optional().describe('Max results (default: 100)'),
     offset: z.number().optional().describe('Pagination offset'),
-  }),
+    queue_name: z.string().optional().describe('Filter by queue name'),
+    parent_task_id: z.number().optional().describe('Filter by parent task ID'),
+    exclude_subtasks: z.boolean().optional().describe('Exclude subtasks from results (default: false)'),
+  }).strict(),
+
+  // Subtask tools
+  create_subtask: z.object({
+    parent_task_id: z.number().describe('Parent task ID'),
+    title: z.string().describe('Subtask title'),
+    description: z.string().optional().describe('Subtask description'),
+    assigned_to: z.string().optional().describe('Agent to assign to'),
+    priority: z.number().optional().describe('Priority (default: 0)'),
+    tags: z.array(z.string()).optional().describe('Tags'),
+    queue_name: z.string().optional().describe('Override queue from parent'),
+  }).strict(),
+
+  get_subtasks: z.object({
+    parent_task_id: z.number().describe('Parent task ID'),
+    recursive: z.boolean().optional().describe('Include nested subtasks (default: false)'),
+    include_archived: z.boolean().optional().describe('Include archived subtasks'),
+  }).strict(),
+
+  get_task_with_subtasks: z.object({
+    task_id: z.number().describe('Task ID'),
+    recursive: z.boolean().optional().describe('Include nested subtasks (default: false)'),
+  }).strict(),
+
+  move_subtask: z.object({
+    subtask_id: z.number().describe('Subtask ID to move'),
+    new_parent_id: z.number().optional().describe('New parent task ID (null or omit to make top-level)'),
+  }).strict(),
 
   get_my_queue: z.object({
     agent_name: z.string().describe('Agent name'),
-  }),
+  }).strict(),
 
   signup_for_task: z.object({
     agent_name: z.string().describe('Agent name signing up for task'),
-  }),
+  }).strict(),
 
   move_task: z.object({
     task_id: z.number().describe('Task ID to transfer'),
     current_agent: z.string().describe('Current agent (for verification)'),
     new_agent: z.string().describe('Agent to transfer to'),
     comment: z.string().describe('Handoff message/context'),
-  }),
+  }).strict(),
+
+  // Queue tools
+  list_queues: z.object({}).strict(),
+
+  get_queue_stats: z.object({
+    queue_name: z.string().describe('Queue name'),
+  }).strict(),
+
+  add_task_to_queue: z.object({
+    task_id: z.number().describe('Task ID'),
+    queue_name: z.string().describe('Queue name to add task to'),
+  }).strict(),
+
+  remove_task_from_queue: z.object({
+    task_id: z.number().describe('Task ID'),
+  }).strict(),
+
+  move_task_to_queue: z.object({
+    task_id: z.number().describe('Task ID'),
+    new_queue_name: z.string().describe('New queue name to move task to'),
+  }).strict(),
+
+  get_queue_tasks: z.object({
+    queue_name: z.string().describe('Queue name'),
+    assigned_to: z.string().optional().describe('Filter by assignee'),
+    status: z.enum(['idle', 'working', 'complete']).optional().describe('Filter by status'),
+    parent_task_id: z.number().optional().describe('Filter by parent task ID'),
+    exclude_subtasks: z.boolean().optional().describe('Exclude subtasks from results'),
+    include_archived: z.boolean().optional().describe('Include archived tasks'),
+    limit: z.number().optional().describe('Max results'),
+    offset: z.number().optional().describe('Pagination offset'),
+  }).strict(),
+
+  clear_queue: z.object({
+    queue_name: z.string().describe('Queue name to clear'),
+  }).strict(),
 
   // Comment tools
   add_comment: z.object({
@@ -216,6 +286,65 @@ export const toolDefinitions = [
     name: 'move_task',
     description: 'Transfer a task to another agent with status reset to idle and add handoff comment',
     inputSchema: zodToJsonSchema(toolSchemas.move_task),
+  },
+
+  // Subtask tools
+  {
+    name: 'create_subtask',
+    description: 'Create a new subtask under a parent task',
+    inputSchema: zodToJsonSchema(toolSchemas.create_subtask),
+  },
+  {
+    name: 'get_subtasks',
+    description: 'Get all subtasks for a parent task',
+    inputSchema: zodToJsonSchema(toolSchemas.get_subtasks),
+  },
+  {
+    name: 'get_task_with_subtasks',
+    description: 'Get a task with all its subtasks in a tree structure',
+    inputSchema: zodToJsonSchema(toolSchemas.get_task_with_subtasks),
+  },
+  {
+    name: 'move_subtask',
+    description: 'Move a subtask to a different parent or make it a top-level task',
+    inputSchema: zodToJsonSchema(toolSchemas.move_subtask),
+  },
+
+  // Queue tools
+  {
+    name: 'list_queues',
+    description: 'List all queue names currently in use',
+    inputSchema: zodToJsonSchema(toolSchemas.list_queues),
+  },
+  {
+    name: 'get_queue_stats',
+    description: 'Get statistics for a specific queue',
+    inputSchema: zodToJsonSchema(toolSchemas.get_queue_stats),
+  },
+  {
+    name: 'add_task_to_queue',
+    description: 'Add an existing task to a queue',
+    inputSchema: zodToJsonSchema(toolSchemas.add_task_to_queue),
+  },
+  {
+    name: 'remove_task_from_queue',
+    description: 'Remove a task from its queue',
+    inputSchema: zodToJsonSchema(toolSchemas.remove_task_from_queue),
+  },
+  {
+    name: 'move_task_to_queue',
+    description: 'Move a task from one queue to another',
+    inputSchema: zodToJsonSchema(toolSchemas.move_task_to_queue),
+  },
+  {
+    name: 'get_queue_tasks',
+    description: 'Get all tasks in a queue with optional filters',
+    inputSchema: zodToJsonSchema(toolSchemas.get_queue_tasks),
+  },
+  {
+    name: 'clear_queue',
+    description: 'Remove all tasks from a queue',
+    inputSchema: zodToJsonSchema(toolSchemas.clear_queue),
   },
 
   // Comment tools

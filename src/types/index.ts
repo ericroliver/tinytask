@@ -14,6 +14,8 @@ export interface ParsedTask {
   created_by: string | null;
   priority: number;
   tags: string[];
+  parent_task_id: number | null;
+  queue_name: string | null;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
@@ -23,6 +25,12 @@ export interface ParsedTask {
 export interface TaskWithRelations extends ParsedTask {
   comments?: CommentData[];
   links?: LinkData[];
+}
+
+// Task with subtasks (hierarchical view)
+export interface TaskWithSubtasks extends ParsedTask {
+  subtasks: ParsedTask[];
+  subtask_count: number;
 }
 
 export interface CommentData {
@@ -51,6 +59,8 @@ export interface CreateTaskParams {
   created_by?: string;
   priority?: number;
   tags?: string[];
+  parent_task_id?: number;
+  queue_name?: string;
 }
 
 export interface UpdateTaskParams {
@@ -60,6 +70,8 @@ export interface UpdateTaskParams {
   assigned_to?: string;
   priority?: number;
   tags?: string[];
+  parent_task_id?: number | null;
+  queue_name?: string;
 }
 
 export interface TaskFilters {
@@ -68,6 +80,9 @@ export interface TaskFilters {
   include_archived?: boolean;
   limit?: number;
   offset?: number;
+  queue_name?: string;
+  parent_task_id?: number | null;
+  exclude_subtasks?: boolean;
 }
 
 export interface CreateCommentParams {
@@ -86,6 +101,19 @@ export interface CreateLinkParams {
 export interface UpdateLinkParams {
   url?: string;
   description?: string;
+}
+
+export interface QueueStats {
+  queue_name: string;
+  total_tasks: number;
+  by_status: {
+    idle: number;
+    working: number;
+    complete: number;
+  };
+  assigned: number;
+  unassigned: number;
+  agents: string[];
 }
 
 // Re-export database types

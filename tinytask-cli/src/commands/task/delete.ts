@@ -41,7 +41,7 @@ export function createTaskDeleteCommand(program: Command): void {
         if (!options.yes && !command.optsWithGlobals().json) {
           console.log(chalk.yellow('⚠️  Warning: This will permanently delete the task.'));
           const confirmed = await promptConfirmation(chalk.cyan('Are you sure? (y/N): '));
-          
+
           if (!confirmed) {
             console.log(chalk.gray('Deletion cancelled.'));
             process.exit(0);

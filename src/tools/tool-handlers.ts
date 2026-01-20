@@ -5,7 +5,7 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { TaskService, CommentService, LinkService } from '../services/index.js';
+import { TaskService, CommentService, LinkService, QueueService } from '../services/index.js';
 import { toolDefinitions, toolSchemas } from './tool-definitions.js';
 import { logger } from '../utils/index.js';
 import {
@@ -18,6 +18,10 @@ import {
   getMyQueueHandler,
   signupForTaskHandler,
   moveTaskHandler,
+  createSubtaskHandler,
+  getSubtasksHandler,
+  getTaskWithSubtasksHandler,
+  moveSubtaskHandler,
 } from './task-tools.js';
 import {
   addCommentHandler,
@@ -31,6 +35,15 @@ import {
   deleteLinkHandler,
   listLinksHandler,
 } from './link-tools.js';
+import {
+  listQueuesHandler,
+  getQueueStatsHandler,
+  addTaskToQueueHandler,
+  removeTaskFromQueueHandler,
+  moveTaskToQueueHandler,
+  getQueueTasksHandler,
+  clearQueueHandler,
+} from './queue-tools.js';
 import type {
   CreateTaskParams,
   UpdateTaskParams,
@@ -41,6 +54,10 @@ import type {
   GetMyQueueParams,
   SignupForTaskParams,
   MoveTaskParams,
+  CreateSubtaskParams,
+  GetSubtasksParams,
+  GetTaskWithSubtasksParams,
+  MoveSubtaskParams,
   AddCommentParams,
   UpdateCommentParams,
   DeleteCommentParams,
@@ -49,6 +66,12 @@ import type {
   UpdateLinkParams,
   DeleteLinkParams,
   ListLinksParams,
+  GetQueueStatsParams,
+  AddTaskToQueueParams,
+  RemoveTaskFromQueueParams,
+  MoveTaskToQueueParams,
+  GetQueueTasksParams,
+  ClearQueueParams,
 } from './handler-types.js';
 
 /**
@@ -58,7 +81,8 @@ export function registerToolHandlers(
   server: Server,
   taskService: TaskService,
   commentService: CommentService,
-  linkService: LinkService
+  linkService: LinkService,
+  queueService: QueueService
 ): void {
   // Handler for tools/list request
   server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -127,6 +151,20 @@ export function registerToolHandlers(
           result = await moveTaskHandler(taskService, validatedArgs as MoveTaskParams);
           break;
 
+        // Subtask tools
+        case 'create_subtask':
+          result = await createSubtaskHandler(taskService, validatedArgs as CreateSubtaskParams);
+          break;
+        case 'get_subtasks':
+          result = await getSubtasksHandler(taskService, validatedArgs as GetSubtasksParams);
+          break;
+        case 'get_task_with_subtasks':
+          result = await getTaskWithSubtasksHandler(taskService, validatedArgs as GetTaskWithSubtasksParams);
+          break;
+        case 'move_subtask':
+          result = await moveSubtaskHandler(taskService, validatedArgs as MoveSubtaskParams);
+          break;
+
         // Comment tools
         case 'add_comment':
           result = await addCommentHandler(commentService, validatedArgs as AddCommentParams);
@@ -153,6 +191,29 @@ export function registerToolHandlers(
           break;
         case 'list_links':
           result = await listLinksHandler(linkService, validatedArgs as ListLinksParams);
+          break;
+
+        // Queue tools
+        case 'list_queues':
+          result = await listQueuesHandler(queueService);
+          break;
+        case 'get_queue_stats':
+          result = await getQueueStatsHandler(queueService, validatedArgs as GetQueueStatsParams);
+          break;
+        case 'add_task_to_queue':
+          result = await addTaskToQueueHandler(queueService, validatedArgs as AddTaskToQueueParams);
+          break;
+        case 'remove_task_from_queue':
+          result = await removeTaskFromQueueHandler(queueService, validatedArgs as RemoveTaskFromQueueParams);
+          break;
+        case 'move_task_to_queue':
+          result = await moveTaskToQueueHandler(queueService, validatedArgs as MoveTaskToQueueParams);
+          break;
+        case 'get_queue_tasks':
+          result = await getQueueTasksHandler(queueService, validatedArgs as GetQueueTasksParams);
+          break;
+        case 'clear_queue':
+          result = await clearQueueHandler(queueService, validatedArgs as ClearQueueParams);
           break;
 
         default:

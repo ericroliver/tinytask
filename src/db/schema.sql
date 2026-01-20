@@ -12,15 +12,22 @@ CREATE TABLE IF NOT EXISTS tasks (
     created_by TEXT,
     priority INTEGER DEFAULT 0,
     tags TEXT,
+    parent_task_id INTEGER,
+    queue_name TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    archived_at DATETIME
+    archived_at DATETIME,
+    FOREIGN KEY (parent_task_id) REFERENCES tasks(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_tasks_assigned_to ON tasks(assigned_to);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_assigned_status ON tasks(assigned_to, status);
 CREATE INDEX IF NOT EXISTS idx_tasks_archived ON tasks(archived_at);
+CREATE INDEX IF NOT EXISTS idx_tasks_parent_task_id ON tasks(parent_task_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_queue_name ON tasks(queue_name);
+CREATE INDEX IF NOT EXISTS idx_tasks_queue_status ON tasks(queue_name, status);
+CREATE INDEX IF NOT EXISTS idx_tasks_queue_assigned ON tasks(queue_name, assigned_to);
 
 -- Comments table
 CREATE TABLE IF NOT EXISTS comments (

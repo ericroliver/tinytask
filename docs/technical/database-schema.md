@@ -18,9 +18,12 @@ CREATE TABLE tasks (
     created_by TEXT,
     priority INTEGER DEFAULT 0,
     tags TEXT,  -- JSON array of tags
+    parent_task_id INTEGER,  -- For hierarchical subtasks
+    queue_name TEXT,  -- For queue-based task organization
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    archived_at DATETIME
+    archived_at DATETIME,
+    FOREIGN KEY (parent_task_id) REFERENCES tasks(id) ON DELETE CASCADE
 );
 
 -- Indexes for performance
@@ -28,6 +31,9 @@ CREATE INDEX idx_tasks_assigned_to ON tasks(assigned_to);
 CREATE INDEX idx_tasks_status ON tasks(status);
 CREATE INDEX idx_tasks_assigned_status ON tasks(assigned_to, status);
 CREATE INDEX idx_tasks_archived ON tasks(archived_at);
+CREATE INDEX idx_tasks_parent_task_id ON tasks(parent_task_id);
+CREATE INDEX idx_tasks_queue_name ON tasks(queue_name);
+CREATE INDEX idx_tasks_queue_status ON tasks(queue_name, status);
 ```
 
 **Key Design Decisions:**
@@ -35,6 +41,10 @@ CREATE INDEX idx_tasks_archived ON tasks(archived_at);
 - `tags` stored as JSON for flexibility
 - `archived_at` NULL means active, non-NULL means archived
 - Compound index on `(assigned_to, status)` for efficient queue queries
+- `parent_task_id` enables hierarchical task organization with CASCADE delete
+- `queue_name` allows flexible queue-based task organization
+- Maximum nesting depth of 4 levels enforced at application layer
+- Indexes on `parent_task_id` and `queue_name` for efficient subtask and queue queries
 
 ### comments
 Comments associated with tasks, with full CRUD support for LLMs.

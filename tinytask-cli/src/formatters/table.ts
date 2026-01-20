@@ -11,24 +11,66 @@ export class TableFormatter implements Formatter {
     }
 
     const table = new Table({
-      head: this.formatHeader(['ID', 'Title', 'Status', 'Assigned', 'Priority']),
+      head: this.formatHeader(['ID', 'Title', 'Status', 'Assigned', 'Queue', 'Parent', 'Priority']),
       style: {
         head: [],
         border: this.options.color ? ['gray'] : [],
       },
-      colWidths: [6, 40, 12, 15, 10],
+      colWidths: [6, 32, 12, 13, 12, 8, 10],
       wordWrap: true,
     });
 
-    tasks.forEach((task) => {
+    // Organize tasks hierarchically
+    const taskList = tasks as Record<string, unknown>[];
+    const taskMap = new Map<number, Record<string, unknown>>();
+    const parentTasks: Record<string, unknown>[] = [];
+    const subtasksByParent = new Map<number, Record<string, unknown>[]>();
+
+    // Build maps
+    taskList.forEach((task) => {
+      const taskId = task.id as number;
+      taskMap.set(taskId, task);
+
+      const parentId = task.parent_task_id as number | null;
+      if (parentId) {
+        if (!subtasksByParent.has(parentId)) {
+          subtasksByParent.set(parentId, []);
+        }
+        subtasksByParent.get(parentId)!.push(task);
+      } else {
+        parentTasks.push(task);
+      }
+    });
+
+    // Add rows in hierarchical order
+    parentTasks.forEach((task) => {
       const t = task as Record<string, unknown>;
       table.push([
         this.formatId(t.id as number),
-        this.truncate(String(t.title), 38),
+        this.truncate(String(t.title), 30),
         this.formatStatus(String(t.status)),
         this.formatAssignee(t.assigned_to as string | null),
+        this.formatQueueName(t.queue_name as string | null),
+        this.formatParent(t.parent_task_id as number | null),
         this.formatPriority(t.priority as number),
       ]);
+
+      // Add subtasks if any
+      const subtasks = subtasksByParent.get(t.id as number);
+      if (subtasks && subtasks.length > 0) {
+        subtasks.forEach((subtask) => {
+          const st = subtask as Record<string, unknown>;
+          table.push([
+            this.formatId(st.id as number),
+            '  ' + this.truncate(String(st.title), 28), // Indent subtask titles
+            this.formatStatus(String(st.status)),
+            this.formatAssignee(st.assigned_to as string | null),
+            this.formatQueueName(st.queue_name as string | null),
+            this.formatParent(st.parent_task_id as number | null),
+            this.formatPriority(st.priority as number),
+          ]);
+        });
+      }
     });
 
     return table.toString();
@@ -37,24 +79,16 @@ export class TableFormatter implements Formatter {
   formatTask(task: Record<string, unknown>): string {
     const lines = [];
 
-    lines.push(
-      this.options.color
-        ? chalk.cyan.bold(`Task #${task.id}`)
-        : `Task #${task.id}`
-    );
+    lines.push(this.options.color ? chalk.cyan.bold(`Task #${task.id}`) : `Task #${task.id}`);
     lines.push('');
-    lines.push(
-      `${this.options.color ? chalk.gray('Title:') : 'Title:'}       ${task.title}`
-    );
+    lines.push(`${this.options.color ? chalk.gray('Title:') : 'Title:'}       ${task.title}`);
     lines.push(
       `${this.options.color ? chalk.gray('Status:') : 'Status:'}      ${this.formatStatus(String(task.status))}`
     );
     lines.push(
       `${this.options.color ? chalk.gray('Assigned:') : 'Assigned:'}    ${task.assigned_to || '-'}`
     );
-    lines.push(
-      `${this.options.color ? chalk.gray('Priority:') : 'Priority:'}    ${task.priority}`
-    );
+    lines.push(`${this.options.color ? chalk.gray('Priority:') : 'Priority:'}    ${task.priority}`);
 
     if (task.description) {
       lines.push(
@@ -83,14 +117,10 @@ export class TableFormatter implements Formatter {
 
     if (Array.isArray(task.comments) && task.comments.length > 0) {
       lines.push('');
-      lines.push(
-        this.options.color ? chalk.cyan.bold('Comments:') : 'Comments:'
-      );
+      lines.push(this.options.color ? chalk.cyan.bold('Comments:') : 'Comments:');
       task.comments.forEach((comment: unknown) => {
         const c = comment as Record<string, unknown>;
-        lines.push(
-          `  [${c.id}] ${c.created_by || 'Unknown'}: ${c.content}`
-        );
+        lines.push(`  [${c.id}] ${c.created_by || 'Unknown'}: ${c.content}`);
       });
     }
 
@@ -115,11 +145,7 @@ export class TableFormatter implements Formatter {
     const { agent, count, tasks } = queueData;
 
     const lines = [];
-    lines.push(
-      this.options.color
-        ? chalk.cyan.bold(`Queue for ${agent}`)
-        : `Queue for ${agent}`
-    );
+    lines.push(this.options.color ? chalk.cyan.bold(`Queue for ${agent}`) : `Queue for ${agent}`);
     lines.push(
       this.options.color
         ? chalk.gray(`${count} task${count !== 1 ? 's' : ''}`)
@@ -221,7 +247,11 @@ export class TableFormatter implements Formatter {
       table.push([
         this.formatId(l.id as number),
         this.truncate(String(l.url), 38),
-        l.description ? this.truncate(String(l.description), 28) : this.options.color ? chalk.gray('-') : '-',
+        l.description
+          ? this.truncate(String(l.description), 28)
+          : this.options.color
+            ? chalk.gray('-')
+            : '-',
         this.formatDate(String(l.created_at)),
       ]);
     });
@@ -280,6 +310,20 @@ export class TableFormatter implements Formatter {
     }
   }
 
+  private formatQueueName(queueName: string | null): string {
+    if (!queueName) {
+      return this.options.color ? chalk.gray('-') : '-';
+    }
+    return this.options.color ? chalk.blue(queueName) : queueName;
+  }
+
+  private formatParent(parentId: number | null): string {
+    if (!parentId) {
+      return this.options.color ? chalk.gray('-') : '-';
+    }
+    return this.options.color ? chalk.magenta(`#${parentId}`) : `#${parentId}`;
+  }
+
   private formatDate(dateStr: string): string {
     const date = new Date(dateStr);
     return date.toLocaleString();
@@ -296,12 +340,7 @@ export class TableFormatter implements Formatter {
     // Auto-detect data type and format appropriately
     if (Array.isArray(data)) {
       return this.formatTasks(data);
-    } else if (
-      typeof data === 'object' &&
-      data !== null &&
-      'agent' in data &&
-      'tasks' in data
-    ) {
+    } else if (typeof data === 'object' && data !== null && 'agent' in data && 'tasks' in data) {
       return this.formatQueue(data as Record<string, unknown>);
     } else if (
       typeof data === 'object' &&
@@ -310,12 +349,7 @@ export class TableFormatter implements Formatter {
       'comments' in data
     ) {
       return this.formatComments(data as Record<string, unknown>);
-    } else if (
-      typeof data === 'object' &&
-      data !== null &&
-      'task_id' in data &&
-      'links' in data
-    ) {
+    } else if (typeof data === 'object' && data !== null && 'task_id' in data && 'links' in data) {
       return this.formatLinks(data as Record<string, unknown>);
     } else {
       return this.formatTask(data as Record<string, unknown>);

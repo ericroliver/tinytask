@@ -40,6 +40,54 @@ export class DatabaseClient {
   }
 
   /**
+   * Check if a column exists in a table
+   */
+  private columnExists(tableName: string, columnName: string): boolean {
+    const result = this.db
+      .prepare(`PRAGMA table_info(${tableName})`)
+      .all() as Array<{ name: string }>;
+    return result.some((col) => col.name === columnName);
+  }
+
+  /**
+   * Run database migrations for schema changes
+   */
+  private runMigrations(): void {
+    // Migration: Add parent_task_id column if it doesn't exist
+    if (!this.columnExists('tasks', 'parent_task_id')) {
+      this.db.exec(`
+        ALTER TABLE tasks ADD COLUMN parent_task_id INTEGER;
+      `);
+      this.db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_tasks_parent_task_id ON tasks(parent_task_id);
+      `);
+    }
+
+    // Migration: Add queue_name column if it doesn't exist
+    if (!this.columnExists('tasks', 'queue_name')) {
+      this.db.exec(`
+        ALTER TABLE tasks ADD COLUMN queue_name TEXT;
+      `);
+      this.db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_tasks_queue_name ON tasks(queue_name);
+      `);
+      this.db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_tasks_queue_status ON tasks(queue_name, status);
+      `);
+      this.db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_tasks_queue_assigned ON tasks(queue_name, assigned_to);
+      `);
+    }
+
+    // Migration: Add previous_assigned_to column if it doesn't exist
+    if (!this.columnExists('tasks', 'previous_assigned_to')) {
+      this.db.exec(`
+        ALTER TABLE tasks ADD COLUMN previous_assigned_to TEXT;
+      `);
+    }
+  }
+
+  /**
    * Initialize database schema
    */
   initialize(): void {
@@ -61,7 +109,29 @@ export class DatabaseClient {
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
 
+    // Separate table creation from index creation
+    const tableStatements: string[] = [];
+    const indexStatements: string[] = [];
+
     for (const statement of statements) {
+      const trimmed = statement.trim();
+      if (trimmed.startsWith('CREATE INDEX')) {
+        indexStatements.push(statement);
+      } else {
+        tableStatements.push(statement);
+      }
+    }
+
+    // 1. Create tables first
+    for (const statement of tableStatements) {
+      this.db.exec(statement);
+    }
+
+    // 2. Run migrations to add missing columns
+    this.runMigrations();
+
+    // 3. Create indexes last (after columns exist)
+    for (const statement of indexStatements) {
       this.db.exec(statement);
     }
 

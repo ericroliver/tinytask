@@ -10,6 +10,8 @@ export interface CreateTaskParams {
   created_by?: string;
   priority?: number;
   tags?: string[];
+  parent_task_id?: number;
+  queue_name?: string;
 }
 
 export interface UpdateTaskParams {
@@ -20,6 +22,8 @@ export interface UpdateTaskParams {
   assigned_to?: string;
   priority?: number;
   tags?: string[];
+  parent_task_id?: number;
+  queue_name?: string;
 }
 
 export interface GetTaskParams {
@@ -40,6 +44,9 @@ export interface ListTasksParams {
   include_archived?: boolean;
   limit?: number;
   offset?: number;
+  queue_name?: string;
+  parent_task_id?: number;
+  exclude_subtasks?: boolean;
 }
 
 export interface GetMyQueueParams {
@@ -97,4 +104,69 @@ export interface DeleteLinkParams {
 
 export interface ListLinksParams {
   task_id: number;
+}
+
+// Subtask handler parameter types
+export interface CreateSubtaskParams {
+  parent_task_id: number;
+  title: string;
+  description?: string;
+  assigned_to?: string;
+  priority?: number;
+  tags?: string[];
+  queue_name?: string;
+}
+
+export interface GetSubtasksParams {
+  parent_task_id: number;
+  recursive?: boolean;
+  include_archived?: boolean;
+}
+
+export interface GetTaskWithSubtasksParams {
+  task_id: number;
+  recursive?: boolean;
+}
+
+export interface MoveSubtaskParams {
+  subtask_id: number;
+  new_parent_id?: number;
+}
+
+// Queue handler parameter types
+export interface ListQueuesParams {
+  // No parameters
+}
+
+export interface GetQueueStatsParams {
+  queue_name: string;
+}
+
+export interface AddTaskToQueueParams {
+  task_id: number;
+  queue_name: string;
+}
+
+export interface RemoveTaskFromQueueParams {
+  task_id: number;
+}
+
+export interface MoveTaskToQueueParams {
+  task_id: number;
+  new_queue_name: string;
+}
+
+export interface GetQueueTasksParams {
+  queue_name: string;
+  assigned_to?: string;
+  status?: 'idle' | 'working' | 'complete';
+  parent_task_id?: number | null;
+  exclude_subtasks?: boolean;
+  include_archived?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ClearQueueParams {
+  queue_name: string;
 }

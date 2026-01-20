@@ -25,9 +25,7 @@ export function createSignupCommand(program: Command): void {
 
         const agentName = options.agent || config.defaultAgent;
         if (!agentName) {
-          console.error(
-            chalk.red('Error: No agent specified and no default agent configured')
-          );
+          console.error(chalk.red('Error: No agent specified and no default agent configured'));
           console.error(chalk.gray('Use: tinytask signup --agent <name>'));
           console.error(chalk.gray('Or: tinytask config set defaultAgent <name>'));
           process.exit(1);

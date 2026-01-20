@@ -43,6 +43,7 @@ describe('Transport Configuration', () => {
         client.taskService,
         client.commentService,
         client.linkService,
+        client.queueService,
         { port, host: 'localhost' }
       );
 
@@ -70,6 +71,7 @@ describe('Transport Configuration', () => {
         client.taskService,
         client.commentService,
         client.linkService,
+        client.queueService,
         { port, host: 'localhost' }
       );
 
@@ -93,6 +95,7 @@ describe('Transport Configuration', () => {
         client.taskService,
         client.commentService,
         client.linkService,
+        client.queueService,
         { port, host: 'localhost' }
       );
 
@@ -134,6 +137,7 @@ describe('Transport Configuration', () => {
         client.taskService,
         client.commentService,
         client.linkService,
+        client.queueService,
         { port, host: 'localhost' }
       );
 
@@ -157,6 +161,7 @@ describe('Transport Configuration', () => {
         client.taskService,
         client.commentService,
         client.linkService,
+        client.queueService,
         { port, host: 'localhost' }
       );
 
@@ -180,6 +185,7 @@ describe('Transport Configuration', () => {
         client.taskService,
         client.commentService,
         client.linkService,
+        client.queueService,
         { port, host: 'localhost' }
       );
 
@@ -202,6 +208,7 @@ describe('Transport Configuration', () => {
         client.taskService,
         client.commentService,
         client.linkService,
+        client.queueService,
         { port, host: 'localhost' }
       );
 
@@ -226,6 +233,7 @@ describe('Transport Configuration', () => {
         client.taskService,
         client.commentService,
         client.linkService,
+        client.queueService,
         { port, host: 'localhost' }
       );
 
@@ -253,6 +261,7 @@ describe('Transport Configuration', () => {
         client.taskService,
         client.commentService,
         client.linkService,
+        client.queueService,
         { port, host: 'localhost' }
       );
 
@@ -284,6 +293,7 @@ describe('Transport Configuration', () => {
         client.taskService,
         client.commentService,
         client.linkService,
+        client.queueService,
         { port, host: 'localhost' }
       );
 
@@ -306,6 +316,7 @@ describe('Transport Configuration', () => {
         client.taskService,
         client.commentService,
         client.linkService,
+        client.queueService,
         { port, host: 'localhost' }
       );
 

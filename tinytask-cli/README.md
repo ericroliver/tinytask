@@ -140,6 +140,12 @@ All commands support these global options:
 tinytask task create "Task title"
 tinytask task create "Task title" -d "Description" -a alice -p 5
 tinytask task create "Task title" --assigned-to bob --priority 8 --tags "bug,urgent"
+
+# Create as subtask
+tinytask task create "Write tests" --parent 5 --assigned-to alice
+
+# Create and assign to queue
+tinytask task create "Fix bug" --queue dev --priority 8
 ```
 
 #### Get Task
@@ -155,6 +161,13 @@ tinytask task get 1 --json
 tinytask task update 1 --status working
 tinytask task update 1 --title "New title" --priority 9
 tinytask task update 1 --assigned-to charlie --tags "feature,ui"
+
+# Change parent or make top-level
+tinytask task update 10 --parent 5
+tinytask task update 10 --parent null
+
+# Change queue
+tinytask task update 1 --queue qa
 ```
 
 #### List Tasks
@@ -165,6 +178,11 @@ tinytask task ls
 tinytask task list --assigned-to alice
 tinytask task list --status working --limit 10
 tinytask task list --include-archived
+
+# Filter by queue or parent
+tinytask task list --queue dev
+tinytask task list --parent 5
+tinytask task list --exclude-subtasks
 ```
 
 #### Delete Task
@@ -180,14 +198,126 @@ tinytask task delete 1 --yes
 tinytask task archive 1
 ```
 
-### Queue and Workflow Commands
+### Subtask Commands
 
-#### View Queue
+Manage task hierarchies and break down complex work into subtasks.
+
+#### Create Subtask
 
 ```bash
-tinytask queue alice
-tinytask queue --mine
-tinytask q alice
+tinytask subtask create 5 "Design database schema"
+tinytask st create 5 "Write tests" -d "Unit and integration tests" -a alice
+tinytask st create 5 "Deploy feature" -p 8 -q qa
+```
+
+#### List Subtasks
+
+```bash
+tinytask subtask list 5
+tinytask st list 5 --recursive
+tinytask st list 5 --include-archived
+```
+
+#### View Task Tree
+
+```bash
+tinytask subtask tree 5
+tinytask st tree 5 --recursive
+```
+
+Output displays hierarchical task structure:
+```
+Task #5: User Authentication [dev] (alice)
+├── Task #10: Design schema (bob)
+│   └── Task #15: Create ERD (alice)
+├── Task #11: Write tests (charlie)
+└── Task #12: Deploy (unassigned)
+```
+
+#### Move Subtask
+
+```bash
+# Move to different parent
+tinytask subtask move 10 5
+
+# Make top-level task
+tinytask st move 10
+```
+
+### Queue Management Commands
+
+Organize tasks into team queues (dev, product, qa, etc.).
+
+#### List All Queues
+
+```bash
+tinytask queue list
+tinytask queue ls
+```
+
+#### View Queue Statistics
+
+```bash
+tinytask queue stats dev
+tinytask queue stats qa --json
+```
+
+Output displays queue metrics:
+```
+Queue: dev
+─────────────────────────
+Total Tasks:     12
+  Idle:          5
+  Working:       4
+  Complete:      3
+
+Assignment:
+  Assigned:      10
+  Unassigned:    2
+
+Agents:          alice, bob, charlie
+```
+
+#### View Tasks in Queue
+
+```bash
+tinytask queue tasks dev
+tinytask queue tasks dev --status idle
+tinytask queue tasks dev --assigned-to alice
+tinytask queue tasks qa --exclude-subtasks
+```
+
+#### Add Task to Queue
+
+```bash
+tinytask queue add 5 dev
+```
+
+#### Remove Task from Queue
+
+```bash
+tinytask queue remove 5
+```
+
+#### Move Task Between Queues
+
+```bash
+tinytask queue move 5 qa
+```
+
+#### Clear Queue
+
+```bash
+tinytask queue clear dev --yes
+```
+
+### Agent Workflow Commands
+
+#### View Agent Queue
+
+```bash
+tinytask queue view alice
+tinytask queue view --mine
 ```
 
 #### Signup for Task
@@ -197,7 +327,7 @@ tinytask signup
 tinytask signup --agent alice
 ```
 
-#### Move Task
+#### Move Task Between Agents
 
 ```bash
 tinytask move 1 bob
@@ -343,6 +473,22 @@ One-line summary per task:
 
 ```bash
 tinytask task list --output compact
+```
+
+### Tree Format
+
+Hierarchical tree display for subtasks:
+
+```bash
+tinytask subtask tree 5
+```
+
+### Stats Format
+
+Formatted statistics for queue metrics:
+
+```bash
+tinytask queue stats dev
 ```
 
 ## Examples

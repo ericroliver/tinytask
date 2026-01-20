@@ -7,6 +7,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createTestClient, TestClient } from '../helpers/test-client.js';
 import { startSseServer } from '../../src/server/sse.js';
 import { startStreamableHttpServer } from '../../src/server/streamable-http.js';
+import { Server as HttpServer } from 'http';
 
 // Test configuration
 const SSE_PORT = 6001;
@@ -113,6 +114,8 @@ async function getTaskViaHttp(baseUrl: string, taskId: number): Promise<void> {
 describe('Transport Performance Comparison', () => {
   let sseClient: TestClient;
   let streamableClient: TestClient;
+  let sseServer: HttpServer;
+  let streamableServer: HttpServer;
 
   beforeAll(async () => {
     // Create separate clients for each transport
@@ -120,18 +123,20 @@ describe('Transport Performance Comparison', () => {
     streamableClient = createTestClient();
 
     // Start SSE server
-    await startSseServer(
+    sseServer = await startSseServer(
       sseClient.taskService,
       sseClient.commentService,
       sseClient.linkService,
+      sseClient.queueService,
       { port: SSE_PORT, host: 'localhost' }
     );
 
     // Start Streamable HTTP server
-    startStreamableHttpServer(
+    streamableServer = await startStreamableHttpServer(
       streamableClient.taskService,
       streamableClient.commentService,
       streamableClient.linkService,
+      streamableClient.queueService,
       { port: STREAMABLE_PORT, host: 'localhost' }
     );
 
@@ -140,7 +145,16 @@ describe('Transport Performance Comparison', () => {
     await waitForServer(STREAMABLE_URL);
   }, 30000);
 
-  afterAll(() => {
+  afterAll(async () => {
+    // Close servers first
+    await new Promise<void>((resolve) => {
+      sseServer?.close(() => resolve());
+    });
+    await new Promise<void>((resolve) => {
+      streamableServer?.close(() => resolve());
+    });
+    
+    // Then cleanup database clients
     sseClient.cleanup();
     streamableClient.cleanup();
   });

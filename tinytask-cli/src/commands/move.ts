@@ -45,9 +45,7 @@ export function createMoveCommand(program: Command): void {
         console.log(formatter.format(task));
 
         if (config.outputFormat === 'table') {
-          console.log(
-            chalk.green(`\n✓ Task #${id} transferred from ${fromAgent} to ${toAgent}`)
-          );
+          console.log(chalk.green(`\n✓ Task #${id} transferred from ${fromAgent} to ${toAgent}`));
         }
       } catch (error) {
         console.error(

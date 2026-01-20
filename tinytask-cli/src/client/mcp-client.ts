@@ -10,6 +10,8 @@ export interface CreateTaskParams {
   priority?: number;
   tags?: string[];
   status?: 'idle' | 'working' | 'complete';
+  parent_task_id?: number;
+  queue_name?: string;
 }
 
 export interface UpdateTaskParams {
@@ -20,11 +22,43 @@ export interface UpdateTaskParams {
   assigned_to?: string;
   priority?: number;
   tags?: string[];
+  parent_task_id?: number;
+  queue_name?: string;
 }
 
 export interface TaskFilters {
   assigned_to?: string;
   status?: 'idle' | 'working' | 'complete';
+  include_archived?: boolean;
+  limit?: number;
+  offset?: number;
+  queue_name?: string;
+  parent_task_id?: number;
+  exclude_subtasks?: boolean;
+}
+
+export interface CreateSubtaskParams {
+  parent_task_id: number;
+  title: string;
+  description?: string;
+  assigned_to?: string;
+  priority?: number;
+  tags?: string[];
+  queue_name?: string;
+}
+
+export interface GetSubtasksParams {
+  parent_task_id: number;
+  recursive?: boolean;
+  include_archived?: boolean;
+}
+
+export interface QueueFilters {
+  queue_name: string;
+  assigned_to?: string;
+  status?: 'idle' | 'working' | 'complete';
+  parent_task_id?: number;
+  exclude_subtasks?: boolean;
   include_archived?: boolean;
   limit?: number;
   offset?: number;
@@ -289,5 +323,109 @@ export class TinyTaskClient {
       arguments: { id },
     });
     this.parseResult(result);
+  }
+
+  // Subtask Operations
+  async createSubtask(params: CreateSubtaskParams): Promise<unknown> {
+    this.ensureConnected();
+    const result = await this.client.callTool({
+      name: 'create_subtask',
+      arguments: params,
+    });
+    return this.parseResult(result);
+  }
+
+  async getSubtasks(params: GetSubtasksParams): Promise<unknown> {
+    this.ensureConnected();
+    const result = await this.client.callTool({
+      name: 'get_subtasks',
+      arguments: params,
+    });
+    return this.parseResult(result);
+  }
+
+  async getTaskWithSubtasks(taskId: number, recursive = false): Promise<unknown> {
+    this.ensureConnected();
+    const result = await this.client.callTool({
+      name: 'get_task_with_subtasks',
+      arguments: { task_id: taskId, recursive },
+    });
+    return this.parseResult(result);
+  }
+
+  async moveSubtask(subtaskId: number, newParentId?: number): Promise<unknown> {
+    this.ensureConnected();
+    const result = await this.client.callTool({
+      name: 'move_subtask',
+      arguments: {
+        subtask_id: subtaskId,
+        new_parent_id: newParentId,
+      },
+    });
+    return this.parseResult(result);
+  }
+
+  // Queue Operations
+  async listQueues(): Promise<unknown> {
+    this.ensureConnected();
+    const result = await this.client.callTool({
+      name: 'list_queues',
+      arguments: {},
+    });
+    return this.parseResult(result);
+  }
+
+  async getQueueStats(queueName: string): Promise<unknown> {
+    this.ensureConnected();
+    const result = await this.client.callTool({
+      name: 'get_queue_stats',
+      arguments: { queue_name: queueName },
+    });
+    return this.parseResult(result);
+  }
+
+  async addTaskToQueue(taskId: number, queueName: string): Promise<unknown> {
+    this.ensureConnected();
+    const result = await this.client.callTool({
+      name: 'add_task_to_queue',
+      arguments: { task_id: taskId, queue_name: queueName },
+    });
+    return this.parseResult(result);
+  }
+
+  async removeTaskFromQueue(taskId: number): Promise<unknown> {
+    this.ensureConnected();
+    const result = await this.client.callTool({
+      name: 'remove_task_from_queue',
+      arguments: { task_id: taskId },
+    });
+    return this.parseResult(result);
+  }
+
+  async moveTaskToQueue(taskId: number, newQueueName: string): Promise<unknown> {
+    this.ensureConnected();
+    const result = await this.client.callTool({
+      name: 'move_task_to_queue',
+      arguments: { task_id: taskId, new_queue_name: newQueueName },
+    });
+    return this.parseResult(result);
+  }
+
+  async getQueueTasks(filters: QueueFilters): Promise<unknown> {
+    this.ensureConnected();
+    const result = await this.client.callTool({
+      name: 'get_queue_tasks',
+      arguments: filters,
+    });
+    return this.parseResult(result);
+  }
+
+  async clearQueue(queueName: string): Promise<void> {
+    this.ensureConnected();
+    const result = await this.client.callTool({
+      name: 'clear_queue',
+      arguments: { queue_name: queueName },
+    });
+    this.parseResult(result, true);
   }
 }

@@ -41,9 +41,7 @@ export class CSVFormatter implements Formatter {
 
     // Format data rows
     items.forEach((item) => {
-      const values = headers.map((h) =>
-        this.formatValue((item as Record<string, unknown>)[h])
-      );
+      const values = headers.map((h) => this.formatValue((item as Record<string, unknown>)[h]));
       lines.push(this.formatRow(values));
     });
 

@@ -27,6 +27,7 @@ export async function startSseServer(
   taskService: import('../services/task-service.js').TaskService,
   commentService: import('../services/comment-service.js').CommentService,
   linkService: import('../services/link-service.js').LinkService,
+  queueService: import('../services/queue-service.js').QueueService,
   options?: SseServerOptions
 ): Promise<HttpServer> {
   const app = express();
@@ -81,7 +82,7 @@ export async function startSseServer(
     const sessionId = transport.sessionId;
     
     // Create a NEW MCP Server instance for this session
-    const sessionServer = createMcpServer(taskService, commentService, linkService);
+    const sessionServer = createMcpServer(taskService, commentService, linkService, queueService);
     
     // Store session with its own server instance
     sessions.set(sessionId, { transport, server: sessionServer });

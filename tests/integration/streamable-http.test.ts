@@ -20,6 +20,7 @@ describe('Streamable HTTP Transport', () => {
       client.taskService,
       client.commentService,
       client.linkService,
+        client.queueService,
       { port: TEST_PORT, host: 'localhost' }
     );
 

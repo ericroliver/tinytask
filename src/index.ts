@@ -7,7 +7,7 @@
  */
 
 import { initializeDatabase } from './db/init.js';
-import { TaskService, CommentService, LinkService } from './services/index.js';
+import { TaskService, CommentService, LinkService, QueueService } from './services/index.js';
 import { createMcpServer } from './server/mcp-server.js';
 import { startStdioServer } from './server/stdio.js';
 import { startHttpServer } from './server/http.js';
@@ -79,11 +79,12 @@ async function main() {
     const taskService = new TaskService(db);
     const commentService = new CommentService(db);
     const linkService = new LinkService(db);
+    const queueService = new QueueService(db);
     console.error('✓ Services created');
 
     // Create MCP server
     console.error('Creating MCP server...');
-    const server = createMcpServer(taskService, commentService, linkService);
+    const server = createMcpServer(taskService, commentService, linkService, queueService);
     console.error('✓ MCP server created');
 
     // Start appropriate transport(s)
@@ -105,7 +106,7 @@ async function main() {
 
     if (mode === 'http' || mode === 'both') {
       console.error('Starting HTTP transport...');
-      await startHttpServer(taskService, commentService, linkService, { port, host });
+      await startHttpServer(taskService, commentService, linkService, queueService, { port, host });
       console.error('✓ HTTP transport started');
     }
 

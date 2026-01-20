@@ -14,12 +14,7 @@ export class CompactFormatter implements Formatter {
       'comments' in data
     ) {
       return this.formatComments(data as Record<string, unknown>);
-    } else if (
-      typeof data === 'object' &&
-      data !== null &&
-      'task_id' in data &&
-      'links' in data
-    ) {
+    } else if (typeof data === 'object' && data !== null && 'task_id' in data && 'links' in data) {
       return this.formatLinks(data as Record<string, unknown>);
     } else {
       return this.formatTask(data);

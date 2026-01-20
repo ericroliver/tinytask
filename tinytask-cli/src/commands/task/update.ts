@@ -15,6 +15,8 @@ export function createTaskUpdateCommand(program: Command): void {
     .option('-a, --assigned-to <agent>', 'Update assignee')
     .option('-p, --priority <number>', 'Update priority', parseInt)
     .option('--tags <tags>', 'Update tags (comma-separated)')
+    .option('--parent <id>', 'Change parent task ID (use "null" to make top-level)')
+    .option('-q, --queue <name>', 'Change queue assignment')
     .action(async (id: string, options, command) => {
       try {
         const config = await loadConfig({
@@ -39,8 +41,23 @@ export function createTaskUpdateCommand(program: Command): void {
         if (options.status) updates.status = options.status;
         if (options.assignedTo) updates.assigned_to = options.assignedTo;
         if (options.priority !== undefined) updates.priority = options.priority;
-        if (options.tags)
-          updates.tags = options.tags.split(',').map((t: string) => t.trim());
+        if (options.tags) updates.tags = options.tags.split(',').map((t: string) => t.trim());
+
+        // Handle parent task ID (including "null" to remove parent)
+        if (options.parent !== undefined) {
+          if (options.parent === 'null') {
+            updates.parent_task_id = undefined;
+          } else {
+            const parentId = parseInt(options.parent);
+            if (isNaN(parentId)) {
+              console.error(chalk.red('Error: Parent ID must be a number or "null"'));
+              process.exit(1);
+            }
+            updates.parent_task_id = parentId;
+          }
+        }
+
+        if (options.queue) updates.queue_name = options.queue;
 
         const task = await client.updateTask(updates);
 
