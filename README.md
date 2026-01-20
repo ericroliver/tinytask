@@ -1,15 +1,19 @@
-# TinyTask MCP
+# TinyTask
 
 ## NOTE:
-This is the simplest task management system I could create. I need this for experimentation in a another research project exploring agentic team workflows, collaboration, etc. Probably the biggest gaps are that there is no auth or the concept of users. Tasks are assigned to arbitrary names and the name becomes the queue of work for the name. This project was written entirely using AI (specifically RooCode and Anthropic). From start to finish the initial project took just a few hours and cost about $15.50 in tokens.
+This is the simplest task management system I could create. I need this for experimentation in another research project exploring agentic team workflows, collaboration, etc. Probably the biggest gaps are that there is no auth or the concept of users. Tasks are assigned to arbitrary names and the name becomes the queue of work for the name. This project was written entirely using AI (specifically RooCode and Anthropic). From start to finish the initial project took just a few hours and cost about $15.50 in tokens.
 
 ## Description
 
-A minimal task management system designed for LLM agent collaboration, exposed as a Model Context Protocol (MCP) server.
+A minimal task management system designed for LLM agent collaboration. TinyTask provides both:
+- **MCP Server**: Model Context Protocol server for agent integration
+- **CLI Client**: Command-line interface for direct task management
 
 ## Features
 
 - **Task Management**: Complete CRUD operations for tasks with status tracking (idle, working, complete)
+- **Subtasks & Hierarchies**: Create parent-child task relationships for breaking down complex work
+- **Queue Organization**: Organize tasks by team or functional area (dev, product, qa, etc.)
 - **Comment System**: Add, update, and delete comments on tasks
 - **Link/Artifact Tracking**: Associate URLs and artifacts with tasks
 - **Agent Queue Management**: Per-agent task queues with priority sorting
@@ -20,9 +24,40 @@ A minimal task management system designed for LLM agent collaboration, exposed a
 
 ## Quick Start
 
-### Docker (Recommended)
+### TinyTask CLI
 
-The easiest way to run TinyTask MCP is using Docker:
+The command-line interface provides direct access to all TinyTask features:
+
+```bash
+# Install globally
+cd tinytask-cli
+npm install
+npm run build
+npm link
+
+# Or use standalone executables (no Node.js required)
+npm run package  # Creates binaries in dist/binaries/
+
+# Basic usage
+tinytask task create "My first task" --assigned-to me
+tinytask task list
+tinytask task get 1
+
+# Subtask management
+tinytask subtask create 1 "Subtask title" --assigned-to alice
+tinytask subtask list 1
+
+# Queue management
+tinytask queue list
+tinytask queue stats dev
+tinytask queue tasks dev --status idle
+```
+
+See [tinytask-cli/README.md](tinytask-cli/README.md) for complete CLI documentation.
+
+### MCP Server - Docker (Recommended)
+
+The easiest way to run TinyTask MCP server is using Docker:
 
 > **Note**: Docker Compose v2+ is required. The `version` field has been removed from `docker-compose.yml` for v2+ compatibility. If you're using Docker Compose v1.x, please upgrade to v2.0 or later.
 
@@ -39,7 +74,7 @@ docker-compose down
 
 The server will be available at `http://localhost:3000`
 
-### Local Development
+### MCP Server - Local Development
 
 ```bash
 # Install dependencies
@@ -80,7 +115,7 @@ For local development with MCP clients like Claude Desktop:
   "mcpServers": {
     "tinytask": {
       "command": "node",
-      "args": ["/path/to/tinytask-mcp/build/index.js"],
+      "args": ["/path/to/tinytask/build/index.js"],
       "env": {
         "TINYTASK_MODE": "stdio",
         "TINYTASK_DB_PATH": "/path/to/data/tinytask.db"
@@ -133,7 +168,7 @@ If you explicitly enable SSE via `TINYTASK_ENABLE_SSE=true`, the endpoint is the
 
 ## Logging Configuration
 
-TinyTask MCP supports multiple logging levels for debugging and troubleshooting agent interactions.
+TinyTask supports multiple logging levels for debugging and troubleshooting agent interactions.
 
 ### Log Levels
 
@@ -180,7 +215,7 @@ npm run dev
   "mcpServers": {
     "tinytask": {
       "command": "node",
-      "args": ["/path/to/tinytask-mcp/build/index.js"],
+      "args": ["/path/to/tinytask/build/index.js"],
       "env": {
         "TINYTASK_MODE": "stdio",
         "TINYTASK_LOG_LEVEL": "debug"
@@ -221,20 +256,35 @@ If an agent (like goose) is having issues creating tasks or performing operation
 
 ### Tools
 
-TinyTask MCP exposes the following tools for LLM agents:
+TinyTask exposes the following tools for LLM agents via MCP:
 
 #### Task Tools
-- `create_task` - Create a new task
-- `update_task` - Update an existing task
+- `create_task` - Create a new task (supports `parent_task_id` and `queue_name`)
+- `update_task` - Update an existing task (can change parent and queue)
 - `get_task` - Retrieve a task by ID
 - `delete_task` - Delete a task
 - `archive_task` - Archive a completed task
-- `list_tasks` - List all tasks
+- `list_tasks` - List all tasks (filter by queue, parent, status, etc.)
 - `get_my_queue` - Get tasks assigned to a specific agent
 - **`signup_for_task`** ⚡ - Claim highest priority idle task and mark as working (atomic)
 - **`move_task`** ⚡ - Transfer task to another agent with handoff comment (atomic)
 
 **⚡ High-Efficiency Tools**: These tools combine multiple operations into single atomic transactions, reducing token consumption by 40-60% for common workflows.
+
+#### Subtask Tools
+- `create_subtask` - Create a subtask under a parent task
+- `get_subtasks` - Get all subtasks for a parent task (immediate or recursive)
+- `get_task_with_subtasks` - Get a task with its complete subtask hierarchy
+- `move_subtask` - Move a subtask to a different parent or make it top-level
+
+#### Queue Tools
+- `list_queues` - List all queue names currently in use
+- `get_queue_stats` - Get statistics for a specific queue
+- `add_task_to_queue` - Add an existing task to a queue
+- `remove_task_from_queue` - Remove a task from its queue
+- `move_task_to_queue` - Move a task from one queue to another
+- `get_queue_tasks` - Get all tasks in a queue with optional filters
+- `clear_queue` - Remove all tasks from a queue
 
 #### Comment Tools
 - `add_comment` - Add a comment to a task
@@ -250,16 +300,24 @@ TinyTask MCP exposes the following tools for LLM agents:
 
 ### Resources
 
-TinyTask MCP provides the following resources:
+TinyTask provides the following resources via MCP:
 
+#### Task Resources
 - `task://{id}` - Full task details with comments and links
-- `queue://{agent_name}` - Agent's task queue
+- `task://{id}/comments` - All comments for a specific task
+- `task://{id}/links` - All links/artifacts for a specific task
+- `task://hierarchy/{id}` - Task with its complete subtask hierarchy
+
+#### Queue Resources
+- `queue://{agent_name}` - All open tasks assigned to a specific agent
+- `queue://{agent_name}/summary` - Summary statistics for an agent's queue
+- `queue://list` - List all queues with basic statistics
+- `queue://stats/{queue_name}` - Detailed statistics for a specific queue
+- `queue://tasks/{queue_name}` - All tasks in a specific queue
+
+#### Task List Resources
 - `tasks://active` - All active (non-archived) tasks
-- `tasks://idle` - All idle tasks
-- `tasks://working` - All tasks in progress
-- `tasks://complete` - All completed tasks
-- `tasks://by-priority` - Tasks sorted by priority
-- `tasks://unassigned` - Tasks not assigned to any agent
+- `tasks://archived` - All archived tasks
 
 For detailed API documentation, see [API Documentation](docs/technical/mcp-api-design.md)
 
@@ -282,85 +340,150 @@ Refer to the [docs/product/streamable-http-migration-guide.md](docs/product/stre
 
 ## Architecture
 
-TinyTask MCP follows a layered architecture:
+TinyTask follows a layered architecture:
 
-1. **Transport Layer**: Handles stdio, Streamable HTTP, and SSE communication
-2. **MCP Server Layer**: Implements MCP protocol (tools & resources)
-3. **Service Layer**: Business logic for tasks, comments, and links
-4. **Database Layer**: SQLite with Better-SQLite3
+1. **CLI Layer** (optional): Command-line interface for direct interaction
+2. **Transport Layer**: Handles stdio, Streamable HTTP, and SSE communication
+3. **MCP Server Layer**: Implements MCP protocol (tools & resources)
+4. **Service Layer**: Business logic for tasks, comments, links, subtasks, and queues
+5. **Database Layer**: SQLite with Better-SQLite3
 
 For detailed architecture documentation, see [Architecture Documentation](docs/technical/architecture.md)
 
 ## Example Workflows
 
-### Feature Development Workflow (Using High-Efficiency Tools)
+### Feature Development with Subtasks & Queues
 
-1. **Product Agent** creates a feature request:
+1. **Product Agent** creates a feature epic with subtasks:
 ```typescript
-create_task({
+// Create epic in product queue
+const epic = create_task({
   title: "Add dark mode toggle",
   description: "Users want dark mode option",
-  assigned_to: "architect-agent",
-  created_by: "product-agent",
+  queue_name: "product",
+  assigned_to: "product-agent",
   priority: 10
 })
+
+// Break down into subtasks for different teams
+create_subtask({
+  parent_task_id: epic.id,
+  title: "Design dark mode UI/UX",
+  queue_name: "product",
+  assigned_to: "designer-agent"
+})
+
+create_subtask({
+  parent_task_id: epic.id,
+  title: "Implement dark mode toggle",
+  queue_name: "dev",
+  assigned_to: "code-agent"
+})
+
+create_subtask({
+  parent_task_id: epic.id,
+  title: "Test dark mode across browsers",
+  queue_name: "qa"
+})
 ```
 
-2. **Architect Agent** claims and works on task:
+2. **Developer Agent** works on dev queue task:
 ```typescript
-// 🚀 NEW: Claim task in one operation (was 3 tool calls)
-const task = signup_for_task({ agent_name: "architect-agent" })
-// Task is now marked as 'working' and includes all comments/links
+// 🚀 Claim highest priority task from dev queue
+const task = signup_for_task({ agent_name: "code-agent" })
 
-// Add design document
+// Add implementation link
 add_link({
   task_id: task.id,
-  url: "/docs/dark-mode-design.md",
-  description: "Architecture design"
+  url: "/src/components/DarkModeToggle.tsx",
+  description: "Implementation file"
 })
 
-// 🚀 NEW: Transfer to developer with handoff comment (was 3 tool calls)
+// 🚀 Transfer to QA with handoff comment
 move_task({
   task_id: task.id,
-  current_agent: "architect-agent",
-  new_agent: "code-agent",
-  comment: "Architecture complete. Design doc attached. Ready for implementation."
+  current_agent: "code-agent",
+  new_agent: "qa-agent",
+  comment: "Implementation complete. Toggle component ready for testing."
 })
 ```
 
-3. **Code Agent** claims and implements:
+3. **QA Agent** picks up unassigned QA task:
 ```typescript
-// 🚀 NEW: Claim transferred task in one operation
-const task = signup_for_task({ agent_name: "code-agent" })
-// Automatically gets highest priority idle task with handoff comment
+// Get unassigned tasks in QA queue
+const queueTasks = get_queue_tasks({
+  queue_name: "qa",
+  status: "idle"
+})
 
-// Implement and complete
-add_comment({ task_id: task.id, content: "Implementation complete" })
-update_task({ id: task.id, status: "complete" })
+// Claim and test
+update_task({ 
+  id: queueTasks.tasks[0].id, 
+  assigned_to: "qa-agent", 
+  status: "working" 
+})
+
+// Complete testing
+add_comment({ task_id: queueTasks.tasks[0].id, content: "All tests passed" })
+update_task({ id: queueTasks.tasks[0].id, status: "complete" })
 ```
 
-4. **Integration Agent** archives:
+4. **Check epic progress**:
 ```typescript
-archive_task({ id: task.id })
+// Get epic with all subtasks
+const epicTree = get_task_with_subtasks({
+  task_id: epic.id,
+  recursive: true
+})
+
+// Calculate completion
+const subtasks = get_subtasks({ parent_task_id: epic.id })
+const completed = subtasks.filter(t => t.status === "complete").length
+console.log(`Progress: ${completed}/${subtasks.length} subtasks complete`)
 ```
 
-**Token Savings**: This workflow uses 2 fewer tool calls per agent handoff, saving ~40-60% tokens on task management operations.
-
-### Traditional Workflow (Still Supported)
-
-For specialized scenarios, all individual tools remain available:
+### Queue Management Examples
 
 ```typescript
-// Check queue manually
-const queue = get_my_queue({ agent_name: "architect-agent" })
-const task = queue.tasks[0]
+// List all active queues with statistics
+const queues = list_queues()
 
-// Update status manually
-update_task({ id: task.id, status: "working" })
+// Get detailed stats for dev queue
+const devStats = get_queue_stats({ queue_name: "dev" })
 
-// Transfer manually
-update_task({ id: task.id, assigned_to: "code-agent", status: "idle" })
-add_comment({ task_id: task.id, content: "Handoff message" })
+// Get all idle tasks in a queue
+const devTasks = get_queue_tasks({
+  queue_name: "dev",
+  status: "idle"
+})
+
+// Move task between queues
+move_task_to_queue({
+  task_id: 42,
+  new_queue_name: "qa"
+})
+```
+
+### CLI Workflow Examples
+
+```bash
+# Create epic with subtasks
+tinytask task create "Add dark mode" --queue product -p 10
+tinytask subtask create 1 "Design UI" --queue product
+tinytask subtask create 1 "Implement" --queue dev
+tinytask subtask create 1 "Test" --queue qa
+
+# Check queue status
+tinytask queue list
+tinytask queue stats dev
+tinytask queue tasks dev --status idle
+
+# Claim and work on task
+tinytask task update 2 --assigned-to me --status working
+tinytask task get 2
+
+# Track progress
+tinytask subtask list 1 --tree
 ```
 
 For more examples, see [Example Workflows](docs/examples/workflows.md)
