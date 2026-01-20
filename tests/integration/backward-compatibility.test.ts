@@ -61,6 +61,7 @@ describe('Backward Compatibility', () => {
         client.taskService,
         client.commentService,
         client.linkService,
+        client.queueService,
         { port, host: 'localhost' }
       );
       servers.push(server);
@@ -86,6 +87,7 @@ describe('Backward Compatibility', () => {
         client.taskService,
         client.commentService,
         client.linkService,
+        client.queueService,
         { port, host: 'localhost' }
       );
       servers.push(server);
@@ -110,6 +112,7 @@ describe('Backward Compatibility', () => {
         client.taskService,
         client.commentService,
         client.linkService,
+        client.queueService,
         { port, host: 'localhost' }
       );
       servers.push(server);
@@ -145,6 +148,7 @@ describe('Backward Compatibility', () => {
         client.taskService,
         client.commentService,
         client.linkService,
+        client.queueService,
         { port, host: 'localhost' }
       );
       servers.push(server);
@@ -241,6 +245,7 @@ describe('Backward Compatibility', () => {
         client.taskService,
         client.commentService,
         client.linkService,
+        client.queueService,
         { port, host: 'localhost' }
       );
       servers.push(server);
@@ -553,6 +558,7 @@ describe('Backward Compatibility', () => {
         client.taskService,
         client.commentService,
         client.linkService,
+        client.queueService,
         { port, host: 'localhost' }
       );
 
@@ -573,6 +579,7 @@ describe('Backward Compatibility', () => {
         client.taskService,
         client.commentService,
         client.linkService,
+        client.queueService,
         { port, host: 'localhost' }
       );
 

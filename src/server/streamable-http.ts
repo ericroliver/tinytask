@@ -26,6 +26,7 @@ export async function startStreamableHttpServer(
   taskService: import('../services/task-service.js').TaskService,
   commentService: import('../services/comment-service.js').CommentService,
   linkService: import('../services/link-service.js').LinkService,
+  queueService: import('../services/queue-service.js').QueueService,
   options?: StreamableHttpServerOptions
 ): Promise<HttpServer> {
   const app = express();
@@ -76,7 +77,7 @@ export async function startStreamableHttpServer(
     // For new requests, create transport and session
     // The transport itself manages session IDs
     const transport = new StreamableHTTPServerTransport();
-    const sessionServer = createMcpServer(taskService, commentService, linkService);
+    const sessionServer = createMcpServer(taskService, commentService, linkService, queueService);
 
     const sessionId = transport.sessionId || 'unknown';
     

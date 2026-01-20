@@ -4,6 +4,7 @@
 import { TaskService } from '../../src/services/task-service.js';
 import { CommentService } from '../../src/services/comment-service.js';
 import { LinkService } from '../../src/services/link-service.js';
+import { QueueService } from '../../src/services/queue-service.js';
 import { DatabaseClient } from '../../src/db/client.js';
 import fs from 'fs';
 import path from 'path';
@@ -30,6 +31,7 @@ export interface TestClient {
     deleteLink: LinkService['delete'];
     listLinks(taskId: number): any[];
   };
+  queueService: QueueService;
   db: DatabaseClient;
   cleanup: () => void;
 }
@@ -55,6 +57,7 @@ export function createTestClient(): TestClient {
   const taskService = new TaskService(db);
   const commentService = new CommentService(db);
   const linkService = new LinkService(db);
+  const queueService = new QueueService(db);
 
   // Add wrapper methods for test-friendly API
   const taskServiceWithWrappers = Object.assign(taskService, {
@@ -102,6 +105,7 @@ export function createTestClient(): TestClient {
     taskService: taskServiceWithWrappers,
     commentService: commentServiceWithWrappers,
     linkService: linkServiceWithWrappers,
+    queueService,
     db,
     cleanup,
   };

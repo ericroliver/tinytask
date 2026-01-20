@@ -7,6 +7,7 @@ import {
   Task,
   ParsedTask,
   TaskWithRelations,
+  TaskWithSubtasks,
   CreateTaskParams,
   UpdateTaskParams,
   TaskFilters,
@@ -34,14 +35,32 @@ export class TaskService {
         throw new Error(`Invalid status: ${params.status}`);
       }
 
+      // Validate parent_task_id if provided
+      let parentQueueName: string | null = null;
+      if (params.parent_task_id !== undefined && params.parent_task_id !== null) {
+        const parent = this.get(params.parent_task_id);
+        if (!parent) {
+          throw new Error(`Parent task not found: ${params.parent_task_id}`);
+        }
+        // Inherit queue_name from parent if not explicitly provided
+        parentQueueName = parent.queue_name;
+        
+        // Validate nesting depth (max 3 levels)
+        const depth = this.getTaskDepth(params.parent_task_id);
+        if (depth >= 3) {
+          throw new Error('Maximum nesting depth (3 levels) exceeded');
+        }
+      }
+
       // Prepare data
       const status = params.status || 'idle';
       const priority = params.priority ?? 0;
       const tags = params.tags ? JSON.stringify(params.tags) : null;
+      const queueName = params.queue_name !== undefined ? params.queue_name : parentQueueName;
 
       const result = this.db.execute(
-        `INSERT INTO tasks (title, description, status, assigned_to, created_by, priority, tags)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO tasks (title, description, status, assigned_to, created_by, priority, tags, parent_task_id, queue_name)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           params.title.trim(),
           params.description || null,
@@ -50,6 +69,8 @@ export class TaskService {
           params.created_by || null,
           priority,
           tags,
+          params.parent_task_id || null,
+          queueName,
         ]
       );
 
@@ -115,6 +136,33 @@ export class TaskService {
         throw new Error(`Invalid status: ${updates.status}`);
       }
 
+      // Validate parent_task_id if provided
+      if (updates.parent_task_id !== undefined) {
+        if (updates.parent_task_id !== null) {
+          // Prevent task from being its own parent
+          if (updates.parent_task_id === id) {
+            throw new Error('Task cannot be its own parent');
+          }
+
+          // Validate parent exists
+          const parent = this.get(updates.parent_task_id);
+          if (!parent) {
+            throw new Error(`Parent task not found: ${updates.parent_task_id}`);
+          }
+
+          // Prevent circular references
+          if (this.wouldCreateCycle(id, updates.parent_task_id)) {
+            throw new Error('Cannot create circular parent-child relationship');
+          }
+
+          // Validate nesting depth
+          const depth = this.getTaskDepth(updates.parent_task_id);
+          if (depth >= 3) {
+            throw new Error('Maximum nesting depth (3 levels) exceeded');
+          }
+        }
+      }
+
       // Build update query dynamically
       const fields: string[] = [];
       const values: unknown[] = [];
@@ -160,6 +208,16 @@ export class TaskService {
       if (updates.tags !== undefined) {
         fields.push('tags = ?');
         values.push(JSON.stringify(updates.tags));
+      }
+
+      if (updates.parent_task_id !== undefined) {
+        fields.push('parent_task_id = ?');
+        values.push(updates.parent_task_id);
+      }
+
+      if (updates.queue_name !== undefined) {
+        fields.push('queue_name = ?');
+        values.push(updates.queue_name);
       }
 
       // Always update updated_at
@@ -360,10 +418,116 @@ export class TaskService {
   }
 
   /**
+   * Get subtasks for a parent task
+   */
+  getSubtasks(parentId: number, recursive = false): ParsedTask[] {
+    if (!recursive) {
+      // Get immediate children
+      const tasks = this.db.query<Task>(
+        `SELECT * FROM tasks
+         WHERE parent_task_id = ?
+         AND archived_at IS NULL
+         ORDER BY priority DESC, created_at ASC`,
+        [parentId]
+      );
+      return tasks.map(this.parseTask);
+    } else {
+      // Get all descendants using recursive CTE
+      const tasks = this.db.query<Task>(
+        `WITH RECURSIVE subtask_tree AS (
+           -- Base case: immediate children
+           SELECT * FROM tasks WHERE parent_task_id = ?
+           UNION ALL
+           -- Recursive case: children of children
+           SELECT t.*
+           FROM tasks t
+           INNER JOIN subtask_tree st ON t.parent_task_id = st.id
+         )
+         SELECT * FROM subtask_tree
+         WHERE archived_at IS NULL
+         ORDER BY priority DESC, created_at ASC`,
+        [parentId]
+      );
+      return tasks.map(this.parseTask);
+    }
+  }
+
+  /**
+   * Get task with all its subtasks
+   */
+  getTaskWithSubtasks(taskId: number, recursive = false): TaskWithSubtasks | null {
+    const task = this.get(taskId);
+    if (!task) {
+      return null;
+    }
+
+    const subtasks = this.getSubtasks(taskId, recursive);
+    
+    return {
+      ...task,
+      subtasks,
+      subtask_count: subtasks.length,
+    };
+  }
+
+  /**
+   * Create a subtask under a parent task
+   */
+  createSubtask(parentTaskId: number, taskData: CreateTaskParams): ParsedTask {
+    return this.create({
+      ...taskData,
+      parent_task_id: parentTaskId,
+    });
+  }
+
+  /**
+   * Move a subtask to a different parent or make it top-level
+   */
+  moveSubtask(subtaskId: number, newParentId: number | null): ParsedTask {
+    return this.update(subtaskId, {
+      parent_task_id: newParentId,
+    });
+  }
+
+  /**
    * Validate status value
    */
   private isValidStatus(status: string): status is TaskStatus {
     return ['idle', 'working', 'complete'].includes(status);
+  }
+
+  /**
+   * Check if setting newParentId as parent of taskId would create a cycle
+   */
+  private wouldCreateCycle(taskId: number, newParentId: number): boolean {
+    if (taskId === newParentId) {
+      return true;
+    }
+
+    // Check if newParentId is a descendant of taskId
+    const descendants = this.getSubtasks(taskId, true);
+    return descendants.some(t => t.id === newParentId);
+  }
+
+  /**
+   * Get the depth of a task in the hierarchy (0 = top-level, 1 = first level subtask, etc.)
+   */
+  private getTaskDepth(taskId: number): number {
+    let depth = 0;
+    let currentId: number | null = taskId;
+
+    while (currentId !== null && depth < 10) { // Safety limit
+      const task = this.get(currentId);
+      if (!task) {
+        break;
+      }
+      currentId = task.parent_task_id;
+      if (currentId !== null) {
+        depth++;
+      }
+    }
+
+    return depth;
   }
 
   /**

@@ -100,11 +100,12 @@ export function createConfigCommands(program: Command): void {
   const profile = config.command('profile').description('Manage configuration profiles');
 
   profile
-    .command('add <name>')
+    .command('add')
     .description('Add a new profile')
-    .requiredOption('--url <url>', 'TinyTask server URL')
+    .requiredOption('-n, --name <name>', 'Profile name')
+    .requiredOption('-u, --server-url <url>', 'TinyTask server URL')
     .option('--default-agent <agent>', 'Default agent name')
-    .action(async (name: string, options) => {
+    .action(async (options) => {
       try {
         const currentConfig = await loadConfig({});
 
@@ -112,13 +113,13 @@ export function createConfigCommands(program: Command): void {
           currentConfig.profiles = {};
         }
 
-        currentConfig.profiles[name] = {
-          url: options.url,
+        currentConfig.profiles[options.name] = {
+          url: options.serverUrl,
           defaultAgent: options.defaultAgent,
         };
 
         await saveConfig(currentConfig);
-        console.log(chalk.green(`✓ Profile '${name}' added`));
+        console.log(chalk.green(`✓ Profile '${options.name}' added`));
       } catch (error) {
         console.error(
           chalk.red('Error adding profile:'),

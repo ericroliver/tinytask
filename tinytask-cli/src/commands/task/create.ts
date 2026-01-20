@@ -14,6 +14,8 @@ export function createTaskCreateCommand(program: Command): void {
     .option('-p, --priority <number>', 'Priority (default: 0)', parseInt)
     .option('-s, --status <status>', 'Status (idle, working, complete)', 'idle')
     .option('-t, --tags <tags>', 'Comma-separated tags')
+    .option('--parent <id>', 'Create as subtask under parent task ID', parseInt)
+    .option('-q, --queue <name>', 'Assign to queue')
     .action(async (title: string, options, command) => {
       try {
         const config = await loadConfig({
@@ -22,7 +24,9 @@ export function createTaskCreateCommand(program: Command): void {
         });
 
         if (!config.url) {
-          console.error(chalk.red('Error: No server URL configured. Use --url or configure a profile.'));
+          console.error(
+            chalk.red('Error: No server URL configured. Use --url or configure a profile.')
+          );
           process.exit(1);
         }
 
@@ -42,6 +46,8 @@ export function createTaskCreateCommand(program: Command): void {
           priority: options.priority,
           status: options.status,
           tags,
+          parent_task_id: options.parent,
+          queue_name: options.queue,
         });
 
         // Format output

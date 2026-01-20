@@ -145,3 +145,7 @@ data/
 *.db-shm
 *.db-wal
 .DS_Store
+
+# Single Executable Application build artifacts
+*.blob
+tinytask-cli/deploy-local.sh

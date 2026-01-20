@@ -1,6 +1,6 @@
 {
   "name": "tinytask-cli",
-  "version": "0.1.0",
+  "version": "0.2.2",
   "description": "Command-line client for TinyTask MCP server",
   "type": "module",
   "main": "./dist/index.js",

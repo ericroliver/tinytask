@@ -26,6 +26,12 @@ export const resourceDefinitions = [
     description: 'Get all links/artifacts for a specific task',
     mimeType: 'application/json',
   },
+  {
+    uri: 'task://hierarchy/{id}',
+    name: 'Task Hierarchy',
+    description: 'Get a task with its complete subtask hierarchy',
+    mimeType: 'text/plain',
+  },
 
   // Queue resources
   {
@@ -39,6 +45,24 @@ export const resourceDefinitions = [
     name: 'Agent Queue Summary',
     description: "Get summary statistics for an agent's queue",
     mimeType: 'application/json',
+  },
+  {
+    uri: 'queue://list',
+    name: 'Queue List',
+    description: 'List all queues with basic statistics',
+    mimeType: 'text/plain',
+  },
+  {
+    uri: 'queue://stats/{queue_name}',
+    name: 'Queue Statistics',
+    description: 'Get detailed statistics for a specific queue',
+    mimeType: 'text/plain',
+  },
+  {
+    uri: 'queue://tasks/{queue_name}',
+    name: 'Queue Tasks',
+    description: 'Get all tasks in a specific queue',
+    mimeType: 'text/plain',
   },
 
   // Tasks list resources
@@ -81,6 +105,12 @@ export function parseResourceUri(uri: string): {
     return { type: 'task_links', params: { id: taskLinksMatch[1] } };
   }
 
+  // task://hierarchy/{id}
+  const taskHierarchyMatch = uri.match(/^task:\/\/hierarchy\/(\d+)$/);
+  if (taskHierarchyMatch) {
+    return { type: 'task_hierarchy', params: { id: taskHierarchyMatch[1] } };
+  }
+
   // queue://{agent_name}
   const queueMatch = uri.match(/^queue:\/\/([^/]+)$/);
   if (queueMatch) {
@@ -93,6 +123,29 @@ export function parseResourceUri(uri: string): {
     return {
       type: 'queue_summary',
       params: { agent_name: decodeURIComponent(queueSummaryMatch[1]) },
+    };
+  }
+
+  // queue://list
+  if (uri === 'queue://list') {
+    return { type: 'queue_list', params: {} };
+  }
+
+  // queue://stats/{queue_name}
+  const queueStatsMatch = uri.match(/^queue:\/\/stats\/([^/]+)$/);
+  if (queueStatsMatch) {
+    return {
+      type: 'queue_stats',
+      params: { queue_name: decodeURIComponent(queueStatsMatch[1]) },
+    };
+  }
+
+  // queue://tasks/{queue_name}
+  const queueTasksMatch = uri.match(/^queue:\/\/tasks\/([^/]+)$/);
+  if (queueTasksMatch) {
+    return {
+      type: 'queue_tasks',
+      params: { queue_name: decodeURIComponent(queueTasksMatch[1]) },
     };
   }
 

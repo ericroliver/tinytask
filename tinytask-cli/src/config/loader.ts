@@ -14,14 +14,30 @@ export async function loadConfig(options: {
   // Start with defaults
   let config: Config = { ...DEFAULT_CONFIG };
 
-  // Load from config file
+  // Load from config file - try home directory first
+  const homeConfigPath = getConfigPath();
   try {
-    const result = await explorer.search();
-    if (result?.config) {
-      config = { ...config, ...result.config };
+    const homeConfigContent = await fs.readFile(homeConfigPath, 'utf-8');
+    try {
+      const homeConfig = JSON.parse(homeConfigContent);
+      config = { ...config, ...homeConfig };
+    } catch (parseError) {
+      // Invalid JSON in home config, try searching from current directory
+      const result = await explorer.search();
+      if (result?.config) {
+        config = { ...config, ...result.config };
+      }
     }
   } catch (error) {
-    // Config file is optional, continue with defaults
+    // Home config doesn't exist, try searching from current directory
+    try {
+      const result = await explorer.search();
+      if (result?.config) {
+        config = { ...config, ...result.config };
+      }
+    } catch (error) {
+      // Config file is optional, continue with defaults
+    }
   }
 
   // Apply profile if specified

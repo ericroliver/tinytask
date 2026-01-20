@@ -2,7 +2,8 @@ import { Command } from 'commander';
 import { version } from './version.js';
 import { createConfigCommands } from './commands/config.js';
 import { createTaskCommands } from './commands/task/index.js';
-import { createQueueCommand } from './commands/queue.js';
+import { createSubtaskCommands } from './commands/subtask.js';
+import { createQueueCommands } from './commands/queue.js';
 import { createSignupCommand } from './commands/signup.js';
 import { createMoveCommand } from './commands/move.js';
 import { createCommentCommands } from './commands/comment.js';
@@ -30,8 +31,11 @@ export function createCLI(): Command {
   // Task commands
   createTaskCommands(program);
 
-  // Workflow commands
-  createQueueCommand(program);
+  // Subtask commands
+  createSubtaskCommands(program);
+
+  // Queue and workflow commands
+  createQueueCommands(program);
   createSignupCommand(program);
   createMoveCommand(program);
 

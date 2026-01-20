@@ -13,6 +13,8 @@ export async function createTaskHandler(
     created_by?: string;
     priority?: number;
     tags?: string[];
+    parent_task_id?: number;
+    queue_name?: string;
   }
 ) {
   try {
@@ -38,6 +40,197 @@ export async function createTaskHandler(
   }
 }
 
+export async function createSubtaskHandler(
+  taskService: TaskService,
+  params: {
+    parent_task_id: number;
+    title: string;
+    description?: string;
+    assigned_to?: string;
+    priority?: number;
+    tags?: string[];
+    queue_name?: string;
+  }
+) {
+  try {
+    // Validate parent exists
+    const parent = taskService.get(params.parent_task_id);
+    if (!parent) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Parent task not found: ${params.parent_task_id}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    // Create subtask using createSubtask service method
+    const subtask = taskService.createSubtask(params.parent_task_id, {
+      title: params.title,
+      description: params.description,
+      assigned_to: params.assigned_to,
+      priority: params.priority,
+      tags: params.tags,
+      queue_name: params.queue_name,
+    });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(subtask, null, 2),
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `Error creating subtask: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+export async function getSubtasksHandler(
+  taskService: TaskService,
+  params: {
+    parent_task_id: number;
+    recursive?: boolean;
+    include_archived?: boolean;
+  }
+) {
+  try {
+    const subtasks = taskService.getSubtasks(
+      params.parent_task_id,
+      params.recursive || false
+    );
+
+    // Filter archived if needed
+    const filtered = params.include_archived
+      ? subtasks
+      : subtasks.filter((t) => !t.archived_at);
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(
+            {
+              parent_task_id: params.parent_task_id,
+              recursive: params.recursive || false,
+              count: filtered.length,
+              subtasks: filtered,
+            },
+            null,
+            2
+          ),
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `Error retrieving subtasks: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+export async function getTaskWithSubtasksHandler(
+  taskService: TaskService,
+  params: {
+    task_id: number;
+    recursive?: boolean;
+  }
+) {
+  try {
+    const task = taskService.getTaskWithSubtasks(
+      params.task_id,
+      params.recursive || false
+    );
+
+    if (!task) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Task not found: ${params.task_id}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(task, null, 2),
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `Error retrieving task with subtasks: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+export async function moveSubtaskHandler(
+  taskService: TaskService,
+  params: {
+    subtask_id: number;
+    new_parent_id?: number;
+  }
+) {
+  try {
+    // new_parent_id can be undefined (to make top-level) or a number
+    const newParentId = params.new_parent_id === undefined ? null : params.new_parent_id;
+    
+    const task = taskService.moveSubtask(params.subtask_id, newParentId);
+
+    const message = newParentId === null
+      ? `Task #${params.subtask_id} moved to top-level (no parent)`
+      : `Task #${params.subtask_id} moved to parent #${newParentId}`;
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `${message}\n\n${JSON.stringify(task, null, 2)}`,
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `Error moving subtask: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
 export async function updateTaskHandler(
   taskService: TaskService,
   params: {
@@ -48,6 +241,8 @@ export async function updateTaskHandler(
     assigned_to?: string;
     priority?: number;
     tags?: string[];
+    parent_task_id?: number;
+    queue_name?: string;
   }
 ) {
   try {

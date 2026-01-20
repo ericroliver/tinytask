@@ -12,6 +12,9 @@ export function createTaskListCommand(program: Command): void {
     .description('List tasks')
     .option('-a, --assigned-to <agent>', 'Filter by assignee')
     .option('-s, --status <status>', 'Filter by status (idle, working, complete)')
+    .option('-q, --queue <name>', 'Filter by queue')
+    .option('--parent <id>', 'Filter by parent task ID', parseInt)
+    .option('--exclude-subtasks', 'Exclude subtasks from results')
     .option('--include-archived', 'Include archived tasks')
     .option('--limit <number>', 'Limit number of results', parseInt)
     .option('--offset <number>', 'Offset for pagination', parseInt)
@@ -34,6 +37,9 @@ export function createTaskListCommand(program: Command): void {
         const filters: TaskFilters = {};
         if (options.assignedTo) filters.assigned_to = options.assignedTo;
         if (options.status) filters.status = options.status;
+        if (options.queue) filters.queue_name = options.queue;
+        if (options.parent !== undefined) filters.parent_task_id = options.parent;
+        if (options.excludeSubtasks) filters.exclude_subtasks = true;
         if (options.includeArchived) filters.include_archived = true;
         if (options.limit) filters.limit = options.limit;
         if (options.offset) filters.offset = options.offset;
