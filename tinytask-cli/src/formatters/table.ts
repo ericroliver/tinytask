@@ -199,7 +199,7 @@ export class TableFormatter implements Formatter {
       const c = comment as Record<string, unknown>;
       table.push([
         this.formatId(c.id as number),
-        c.created_by || this.options.color ? chalk.gray('Unknown') : 'Unknown',
+        c.created_by || (this.options.color ? chalk.gray('Unknown') : 'Unknown'),
         this.truncate(String(c.content), 38),
         this.formatDate(String(c.created_at)),
       ]);

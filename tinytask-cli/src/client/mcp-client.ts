@@ -69,10 +69,7 @@ export class TinyTaskClient {
   private transport: StreamableHTTPClientTransport;
   private connected: boolean = false;
 
-  constructor(
-    private serverUrl: string,
-    private timeout: number = 30000
-  ) {
+  constructor(private serverUrl: string) {
     this.transport = new StreamableHTTPClientTransport(new URL(serverUrl));
 
     this.client = new Client(

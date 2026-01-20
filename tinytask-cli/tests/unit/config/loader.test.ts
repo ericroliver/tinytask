@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { loadConfig } from '../../../src/config/loader.js';
-import { DEFAULT_CONFIG } from '../../../src/config/schema.js';
 
 describe('Configuration Loader', () => {
   const originalEnv = process.env;
