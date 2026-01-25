@@ -11,11 +11,14 @@ export interface ParsedTask {
   description: string | null;
   status: TaskStatus;
   assigned_to: string | null;
+  previous_assigned_to: string | null;
   created_by: string | null;
   priority: number;
   tags: string[];
   parent_task_id: number | null;
   queue_name: string | null;
+  blocked_by_task_id: number | null;
+  is_currently_blocked: boolean;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
@@ -61,6 +64,7 @@ export interface CreateTaskParams {
   tags?: string[];
   parent_task_id?: number;
   queue_name?: string;
+  blocked_by_task_id?: number;
 }
 
 export interface UpdateTaskParams {
@@ -72,6 +76,7 @@ export interface UpdateTaskParams {
   tags?: string[];
   parent_task_id?: number | null;
   queue_name?: string;
+  blocked_by_task_id?: number | null;
 }
 
 export interface TaskFilters {

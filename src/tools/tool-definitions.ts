@@ -19,6 +19,7 @@ export const toolSchemas = {
     tags: z.array(z.string()).optional().describe('Array of tags'),
     parent_task_id: z.number().optional().describe('Parent task ID (creates subtask)'),
     queue_name: z.string().optional().describe('Queue name (dev, product, qa, etc.)'),
+    blocked_by_task_id: z.number().optional().describe('ID of task that blocks this task. Task will be blocked until the blocking task is completed.'),
   }).strict(),
 
   update_task: z.object({
@@ -31,6 +32,7 @@ export const toolSchemas = {
     tags: z.array(z.string()).optional().describe('New tags (replaces existing)'),
     parent_task_id: z.number().optional().describe('New parent task ID (null to make top-level)'),
     queue_name: z.string().optional().describe('New queue name'),
+    blocked_by_task_id: z.number().nullable().optional().describe('ID of task that blocks this task. Set to null to unblock. Task cannot block itself.'),
   }).strict(),
 
   get_task: z.object({

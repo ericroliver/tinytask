@@ -52,6 +52,14 @@ export class TaskService {
         }
       }
 
+      // Validate blocked_by_task_id if provided
+      if (params.blocked_by_task_id !== undefined && params.blocked_by_task_id !== null) {
+        const blockingTask = this.get(params.blocked_by_task_id);
+        if (!blockingTask) {
+          throw new Error(`Blocking task not found: ${params.blocked_by_task_id}`);
+        }
+      }
+
       // Prepare data
       const status = params.status || 'idle';
       const priority = params.priority ?? 0;
@@ -59,8 +67,8 @@ export class TaskService {
       const queueName = params.queue_name !== undefined ? params.queue_name : parentQueueName;
 
       const result = this.db.execute(
-        `INSERT INTO tasks (title, description, status, assigned_to, created_by, priority, tags, parent_task_id, queue_name)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO tasks (title, description, status, assigned_to, created_by, priority, tags, parent_task_id, queue_name, blocked_by_task_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           params.title.trim(),
           params.description || null,
@@ -71,6 +79,7 @@ export class TaskService {
           tags,
           params.parent_task_id || null,
           queueName,
+          params.blocked_by_task_id || null,
         ]
       );
 
@@ -163,6 +172,27 @@ export class TaskService {
         }
       }
 
+      // Validate blocked_by_task_id if provided
+      if (updates.blocked_by_task_id !== undefined) {
+        if (updates.blocked_by_task_id !== null) {
+          // Prevent task from blocking itself
+          if (updates.blocked_by_task_id === id) {
+            throw new Error('Task cannot be blocked by itself');
+          }
+
+          // Validate blocking task exists
+          const blockingTask = this.get(updates.blocked_by_task_id);
+          if (!blockingTask) {
+            throw new Error(`Blocking task not found: ${updates.blocked_by_task_id}`);
+          }
+
+          // Prevent circular blocking (A blocks B, B blocks A)
+          if (blockingTask.blocked_by_task_id === id) {
+            throw new Error('Cannot create circular blocking relationship');
+          }
+        }
+      }
+
       // Build update query dynamically
       const fields: string[] = [];
       const values: unknown[] = [];
@@ -218,6 +248,11 @@ export class TaskService {
       if (updates.queue_name !== undefined) {
         fields.push('queue_name = ?');
         values.push(updates.queue_name);
+      }
+
+      if (updates.blocked_by_task_id !== undefined) {
+        fields.push('blocked_by_task_id = ?');
+        values.push(updates.blocked_by_task_id);
       }
 
       // Always update updated_at
@@ -285,7 +320,7 @@ export class TaskService {
     `;
 
     const tasks = this.db.query<Task>(sql, values);
-    return tasks.map(this.parseTask);
+    return tasks.map(task => this.parseTask(task));
   }
 
   /**
@@ -293,15 +328,15 @@ export class TaskService {
    */
   getQueue(agentName: string): ParsedTask[] {
     const tasks = this.db.query<Task>(
-      `SELECT * FROM tasks 
-       WHERE assigned_to = ? 
+      `SELECT * FROM tasks
+       WHERE assigned_to = ?
          AND status IN ('idle', 'working')
          AND archived_at IS NULL
        ORDER BY priority DESC, created_at ASC`,
       [agentName]
     );
 
-    return tasks.map(this.parseTask);
+    return tasks.map(task => this.parseTask(task));
   }
 
   /**
@@ -430,7 +465,7 @@ export class TaskService {
          ORDER BY priority DESC, created_at ASC`,
         [parentId]
       );
-      return tasks.map(this.parseTask);
+      return tasks.map(task => this.parseTask(task));
     } else {
       // Get all descendants using recursive CTE
       const tasks = this.db.query<Task>(
@@ -448,7 +483,7 @@ export class TaskService {
          ORDER BY priority DESC, created_at ASC`,
         [parentId]
       );
-      return tasks.map(this.parseTask);
+      return tasks.map(task => this.parseTask(task));
     }
   }
 
@@ -487,6 +522,19 @@ export class TaskService {
     return this.update(subtaskId, {
       parent_task_id: newParentId,
     });
+  }
+
+  /**
+   * Get all tasks that are blocked by a specific task
+   * Useful for notifications or cascade operations
+   */
+  getBlockedTasks(blockingTaskId: number): ParsedTask[] {
+    const tasks = this.db.query<Task>(
+      'SELECT * FROM tasks WHERE blocked_by_task_id = ? AND archived_at IS NULL',
+      [blockingTaskId]
+    );
+
+    return tasks.map(task => this.parseTask(task));
   }
 
   /**
@@ -531,12 +579,39 @@ export class TaskService {
   }
 
   /**
-   * Parse task from database row (handle JSON tags)
+   * Check if a task is currently blocked
+   * A task is blocked if:
+   * 1. It has a blocked_by_task_id set
+   * 2. The blocking task exists
+   * 3. The blocking task status is NOT 'complete'
+   */
+  private isCurrentlyBlocked(task: Task): boolean {
+    if (!task.blocked_by_task_id) {
+      return false;
+    }
+
+    const blockingTask = this.db.queryOne<Task>(
+      'SELECT id, status FROM tasks WHERE id = ?',
+      [task.blocked_by_task_id]
+    );
+
+    if (!blockingTask) {
+      // Blocking task doesn't exist (shouldn't happen with FK, but defensive)
+      return false;
+    }
+
+    // Blocked if blocking task is not complete
+    return blockingTask.status !== 'complete';
+  }
+
+  /**
+   * Parse task from database row (handle JSON tags and compute blocking state)
    */
   private parseTask(task: Task): ParsedTask {
     return {
       ...task,
       tags: task.tags ? JSON.parse(task.tags as string) : [],
+      is_currently_blocked: this.isCurrentlyBlocked(task),
     };
   }
 }

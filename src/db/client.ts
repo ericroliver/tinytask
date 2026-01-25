@@ -85,6 +85,16 @@ export class DatabaseClient {
         ALTER TABLE tasks ADD COLUMN previous_assigned_to TEXT;
       `);
     }
+
+    // Migration: Add blocked_by_task_id column if it doesn't exist
+    if (!this.columnExists('tasks', 'blocked_by_task_id')) {
+      this.db.exec(`
+        ALTER TABLE tasks ADD COLUMN blocked_by_task_id INTEGER;
+      `);
+      this.db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_tasks_blocked_by ON tasks(blocked_by_task_id);
+      `);
+    }
   }
 
   /**

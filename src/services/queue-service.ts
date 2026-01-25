@@ -237,7 +237,7 @@ export class QueueService {
     `;
 
     const tasks = this.db.query<Task>(sql, values);
-    return tasks.map(this.parseTask);
+    return tasks.map(task => this.parseTask(task));
   }
 
   /**
@@ -262,12 +262,33 @@ export class QueueService {
   }
 
   /**
-   * Parse task from database row (handle JSON tags)
+   * Check if a task is currently blocked
+   */
+  private isCurrentlyBlocked(task: Task): boolean {
+    if (!task.blocked_by_task_id) {
+      return false;
+    }
+
+    const blockingTask = this.db.queryOne<Task>(
+      'SELECT id, status FROM tasks WHERE id = ?',
+      [task.blocked_by_task_id]
+    );
+
+    if (!blockingTask) {
+      return false;
+    }
+
+    return blockingTask.status !== 'complete';
+  }
+
+  /**
+   * Parse task from database row (handle JSON tags and compute blocking state)
    */
   private parseTask(task: Task): ParsedTask {
     return {
       ...task,
       tags: task.tags ? JSON.parse(task.tags as string) : [],
+      is_currently_blocked: this.isCurrentlyBlocked(task),
     };
   }
 }

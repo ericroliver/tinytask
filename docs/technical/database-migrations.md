@@ -34,6 +34,17 @@ Adds support for hierarchical tasks and queue management:
   - Tracks who previously owned a task
   - Used during task transfers between agents
 
+### Task Blocking (v2.x.x)
+
+Adds support for task blocking relationships:
+
+- **`blocked_by_task_id`**: INTEGER column for blocking relationships
+  - Enables task blocking functionality
+  - NULL for unblocked tasks
+  - Foreign key reference to tasks(id) with ON DELETE SET NULL
+  - Index created for query performance
+  - Blocking state computed at query time based on blocking task status
+
 ## Implementation
 
 Migrations are implemented in [`src/db/client.ts`](../../src/db/client.ts:42):

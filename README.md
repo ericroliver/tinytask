@@ -12,6 +12,7 @@ A minimal task management system designed for LLM agent collaboration. TinyTask 
 ## Features
 
 - **Task Management**: Complete CRUD operations for tasks with status tracking (idle, working, complete)
+- **Task Blocking**: Tasks can be blocked by other tasks with automatic unblocking when blocker completes
 - **Subtasks & Hierarchies**: Create parent-child task relationships for breaking down complex work
 - **Queue Organization**: Organize tasks by team or functional area (dev, product, qa, etc.)
 - **Comment System**: Add, update, and delete comments on tasks
