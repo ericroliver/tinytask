@@ -15,74 +15,74 @@ export const toolSchemas = {
     description: z.string().optional().describe('Task description'),
     assigned_to: z.string().optional().describe('Agent name to assign to'),
     created_by: z.string().optional().describe('Agent name creating the task'),
-    priority: z.number().optional().describe('Priority level (default: 0)'),
+    priority: z.coerce.number().optional().describe('Priority level (default: 0)'),
     tags: z.array(z.string()).optional().describe('Array of tags'),
-    parent_task_id: z.number().optional().describe('Parent task ID (creates subtask)'),
+    parent_task_id: z.coerce.number().optional().describe('Parent task ID (creates subtask)'),
     queue_name: z.string().optional().describe('Queue name (dev, product, qa, etc.)'),
-    blocked_by_task_id: z.number().optional().describe('ID of task that blocks this task. Task will be blocked until the blocking task is completed.'),
+    blocked_by_task_id: z.coerce.number().optional().describe('ID of task that blocks this task. Task will be blocked until the blocking task is completed.'),
   }).strict(),
 
   update_task: z.object({
-    id: z.number().describe('Task ID'),
+    id: z.coerce.number().describe('Task ID'),
     title: z.string().optional().describe('New title'),
     description: z.string().optional().describe('New description'),
     status: z.enum(['idle', 'working', 'complete']).optional().describe('New status'),
     assigned_to: z.string().optional().describe('New assignee'),
-    priority: z.number().optional().describe('New priority'),
+    priority: z.coerce.number().optional().describe('New priority'),
     tags: z.array(z.string()).optional().describe('New tags (replaces existing)'),
-    parent_task_id: z.number().optional().describe('New parent task ID (null to make top-level)'),
+    parent_task_id: z.coerce.number().optional().describe('New parent task ID (null to make top-level)'),
     queue_name: z.string().optional().describe('New queue name'),
-    blocked_by_task_id: z.number().nullable().optional().describe('ID of task that blocks this task. Set to null to unblock. Task cannot block itself.'),
+    blocked_by_task_id: z.coerce.number().nullable().optional().describe('ID of task that blocks this task. Set to null to unblock. Task cannot block itself.'),
   }).strict(),
 
   get_task: z.object({
-    id: z.number().describe('Task ID'),
+    id: z.coerce.number().describe('Task ID'),
   }).strict(),
 
   delete_task: z.object({
-    id: z.number().describe('Task ID'),
+    id: z.coerce.number().describe('Task ID'),
   }).strict(),
 
   archive_task: z.object({
-    id: z.number().describe('Task ID'),
+    id: z.coerce.number().describe('Task ID'),
   }).strict(),
 
   list_tasks: z.object({
     assigned_to: z.string().optional().describe('Filter by assignee'),
     status: z.enum(['idle', 'working', 'complete']).optional().describe('Filter by status'),
     include_archived: z.boolean().optional().describe('Include archived tasks'),
-    limit: z.number().optional().describe('Max results (default: 100)'),
-    offset: z.number().optional().describe('Pagination offset'),
+    limit: z.coerce.number().optional().describe('Max results (default: 100)'),
+    offset: z.coerce.number().optional().describe('Pagination offset'),
     queue_name: z.string().optional().describe('Filter by queue name'),
-    parent_task_id: z.number().optional().describe('Filter by parent task ID'),
+    parent_task_id: z.coerce.number().optional().describe('Filter by parent task ID'),
     exclude_subtasks: z.boolean().optional().describe('Exclude subtasks from results (default: false)'),
   }).strict(),
 
   // Subtask tools
   create_subtask: z.object({
-    parent_task_id: z.number().describe('Parent task ID'),
+    parent_task_id: z.coerce.number().describe('Parent task ID'),
     title: z.string().describe('Subtask title'),
     description: z.string().optional().describe('Subtask description'),
     assigned_to: z.string().optional().describe('Agent to assign to'),
-    priority: z.number().optional().describe('Priority (default: 0)'),
+    priority: z.coerce.number().optional().describe('Priority (default: 0)'),
     tags: z.array(z.string()).optional().describe('Tags'),
     queue_name: z.string().optional().describe('Override queue from parent'),
   }).strict(),
 
   get_subtasks: z.object({
-    parent_task_id: z.number().describe('Parent task ID'),
+    parent_task_id: z.coerce.number().describe('Parent task ID'),
     recursive: z.boolean().optional().describe('Include nested subtasks (default: false)'),
     include_archived: z.boolean().optional().describe('Include archived subtasks'),
   }).strict(),
 
   get_task_with_subtasks: z.object({
-    task_id: z.number().describe('Task ID'),
+    task_id: z.coerce.number().describe('Task ID'),
     recursive: z.boolean().optional().describe('Include nested subtasks (default: false)'),
   }).strict(),
 
   move_subtask: z.object({
-    subtask_id: z.number().describe('Subtask ID to move'),
-    new_parent_id: z.number().optional().describe('New parent task ID (null or omit to make top-level)'),
+    subtask_id: z.coerce.number().describe('Subtask ID to move'),
+    new_parent_id: z.coerce.number().optional().describe('New parent task ID (null or omit to make top-level)'),
   }).strict(),
 
   get_my_queue: z.object({
@@ -94,7 +94,7 @@ export const toolSchemas = {
   }).strict(),
 
   move_task: z.object({
-    task_id: z.number().describe('Task ID to transfer'),
+    task_id: z.coerce.number().describe('Task ID to transfer'),
     current_agent: z.string().describe('Current agent (for verification)'),
     new_agent: z.string().describe('Agent to transfer to'),
     comment: z.string().describe('Handoff message/context'),
@@ -108,16 +108,16 @@ export const toolSchemas = {
   }).strict(),
 
   add_task_to_queue: z.object({
-    task_id: z.number().describe('Task ID'),
+    task_id: z.coerce.number().describe('Task ID'),
     queue_name: z.string().describe('Queue name to add task to'),
   }).strict(),
 
   remove_task_from_queue: z.object({
-    task_id: z.number().describe('Task ID'),
+    task_id: z.coerce.number().describe('Task ID'),
   }).strict(),
 
   move_task_to_queue: z.object({
-    task_id: z.number().describe('Task ID'),
+    task_id: z.coerce.number().describe('Task ID'),
     new_queue_name: z.string().describe('New queue name to move task to'),
   }).strict(),
 
@@ -125,11 +125,11 @@ export const toolSchemas = {
     queue_name: z.string().describe('Queue name'),
     assigned_to: z.string().optional().describe('Filter by assignee'),
     status: z.enum(['idle', 'working', 'complete']).optional().describe('Filter by status'),
-    parent_task_id: z.number().optional().describe('Filter by parent task ID'),
+    parent_task_id: z.coerce.number().optional().describe('Filter by parent task ID'),
     exclude_subtasks: z.boolean().optional().describe('Exclude subtasks from results'),
     include_archived: z.boolean().optional().describe('Include archived tasks'),
-    limit: z.number().optional().describe('Max results'),
-    offset: z.number().optional().describe('Pagination offset'),
+    limit: z.coerce.number().optional().describe('Max results'),
+    offset: z.coerce.number().optional().describe('Pagination offset'),
   }).strict(),
 
   clear_queue: z.object({
@@ -138,44 +138,44 @@ export const toolSchemas = {
 
   // Comment tools
   add_comment: z.object({
-    task_id: z.number().describe('Task ID'),
+    task_id: z.coerce.number().describe('Task ID'),
     content: z.string().describe('Comment text'),
     created_by: z.string().optional().describe('Agent name'),
   }),
 
   update_comment: z.object({
-    id: z.number().describe('Comment ID'),
+    id: z.coerce.number().describe('Comment ID'),
     content: z.string().describe('New comment text'),
   }),
 
   delete_comment: z.object({
-    id: z.number().describe('Comment ID'),
+    id: z.coerce.number().describe('Comment ID'),
   }),
 
   list_comments: z.object({
-    task_id: z.number().describe('Task ID'),
+    task_id: z.coerce.number().describe('Task ID'),
   }),
 
   // Link tools
   add_link: z.object({
-    task_id: z.number().describe('Task ID'),
+    task_id: z.coerce.number().describe('Task ID'),
     url: z.string().describe('Link/path/reference'),
     description: z.string().optional().describe('Description of the artifact'),
     created_by: z.string().optional().describe('Agent name'),
   }),
 
   update_link: z.object({
-    id: z.number().describe('Link ID'),
+    id: z.coerce.number().describe('Link ID'),
     url: z.string().optional().describe('New URL'),
     description: z.string().optional().describe('New description'),
   }),
 
   delete_link: z.object({
-    id: z.number().describe('Link ID'),
+    id: z.coerce.number().describe('Link ID'),
   }),
 
   list_links: z.object({
-    task_id: z.number().describe('Task ID'),
+    task_id: z.coerce.number().describe('Task ID'),
   }),
 };
 
@@ -209,7 +209,18 @@ function zodToJsonSchema(schema: z.ZodObject<z.ZodRawShape>): Record<string, unk
     } else if (zodType instanceof z.ZodOptional) {
       // Recursive handling for optional types
       const innerType = zodType._def.innerType;
-      if (innerType instanceof z.ZodString) {
+      
+      // Handle nullable types (e.g., z.number().nullable())
+      if (innerType instanceof z.ZodNullable) {
+        const innerNullableType = innerType._def.innerType;
+        if (innerNullableType instanceof z.ZodNumber) {
+          properties[key] = { type: ['number', 'null'], description };
+        } else if (innerNullableType instanceof z.ZodString) {
+          properties[key] = { type: ['string', 'null'], description };
+        } else if (innerNullableType instanceof z.ZodBoolean) {
+          properties[key] = { type: ['boolean', 'null'], description };
+        }
+      } else if (innerType instanceof z.ZodString) {
         properties[key] = { type: 'string', description };
       } else if (innerType instanceof z.ZodNumber) {
         properties[key] = { type: 'number', description };

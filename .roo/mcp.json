@@ -1,13 +1,14 @@
 {
-    "mcpServers": {
-        "tinytask": {
-            "url": "http://m3x.local:3000/mcp/",
-            "disabled": false,
-            "timeout": 500,
-            "type": "streamable-http",
-            "alwaysAllow": [
-                "list_tasks"
-            ]
-        }
-    }
+	"mcpServers": {
+		"tinytask": {
+			"url": "http://localhost:3000/mcp/",
+			"disabled": false,
+			"timeout": 500,
+			"type": "streamable-http",
+			"alwaysAllow": [
+				"list_tasks",
+				"update_task"
+			]
+		}
+	}
 }

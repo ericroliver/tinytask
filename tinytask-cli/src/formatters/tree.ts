@@ -8,6 +8,7 @@ interface TaskNode {
   assigned_to?: string | null;
   queue_name?: string | null;
   priority?: number;
+  blocked_by_task_id?: number | null;
   subtasks?: TaskNode[];
 }
 
@@ -87,6 +88,11 @@ export class TreeFormatter implements Formatter {
             : chalk.yellow(priorityStr)
           : priorityStr
       );
+    }
+
+    if (task.blocked_by_task_id) {
+      const blockedStr = `blocked:#${task.blocked_by_task_id}`;
+      info.push(this.options.color ? chalk.red(blockedStr) : blockedStr);
     }
 
     if (info.length > 0) {
