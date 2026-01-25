@@ -504,3 +504,120 @@ export async function moveTaskHandler(
     };
   }
 }
+
+/**
+ * Set or clear the blocking relationship for a task
+ */
+export async function setBlockedByHandler(
+  taskService: TaskService,
+  params: {
+    task_id: number;
+    blocker_task_id: number | null;
+  }
+) {
+  try {
+    // Validate that the task exists
+    const existingTask = taskService.get(params.task_id);
+    if (!existingTask) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Task not found: ${params.task_id}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    // Validate that the blocker task exists (if provided)
+    if (params.blocker_task_id !== null) {
+      const blockerTask = taskService.get(params.blocker_task_id);
+      if (!blockerTask) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Blocker task not found: ${params.blocker_task_id}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+
+    // Update the task with new blocked_by_task_id
+    const updatedTask = taskService.update(params.task_id, {
+      blocked_by_task_id: params.blocker_task_id,
+    });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `BlockedBy relationship updated for task #${params.task_id}\n\n${JSON.stringify(updatedTask, null, 2)}`,
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `Error setting blocked by relationship: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+/**
+ * Get all tasks that are blocking a given task
+ */
+export async function getBlockersHandler(
+  taskService: TaskService,
+  params: {
+    task_id: number;
+  }
+) {
+  try {
+    // Validate that the task exists
+    const existingTask = taskService.get(params.task_id);
+    if (!existingTask) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Task not found: ${params.task_id}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    // Find all tasks that are blocking this task (where blocked_by_task_id = params.task_id)
+    const blockers = taskService.list({
+      blocked_by_task_id: params.task_id,
+    });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `Blockers for task #${params.task_id}:\n\n${JSON.stringify(blockers, null, 2)}`,
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `Error retrieving blockers: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}

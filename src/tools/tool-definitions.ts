@@ -98,6 +98,16 @@ export const toolSchemas = {
     comment: z.string().describe('Handoff message/context'),
   }).strict(),
 
+  // Blocking tools
+  set_blocked_by: z.object({
+    task_id: z.number().describe('Task ID to update'),
+    blocker_task_id: z.number().nullable().describe('Blocker task ID (null to clear)'),
+  }).strict(),
+
+  get_blockers: z.object({
+    task_id: z.number().describe('Task ID to find blockers for'),
+  }).strict(),
+
   // Queue tools
   list_queues: z.object({}).strict(),
 
@@ -287,7 +297,19 @@ export const toolDefinitions = [
     description: 'Transfer a task to another agent with status reset to idle and add handoff comment',
     inputSchema: zodToJsonSchema(toolSchemas.move_task),
   },
-
+  
+  // Blocking tools
+  {
+    name: 'set_blocked_by',
+    description: 'Set or clear the blocking relationship for a task',
+    inputSchema: zodToJsonSchema(toolSchemas.set_blocked_by),
+  },
+  {
+    name: 'get_blockers',
+    description: 'Get all tasks that are blocking a given task',
+    inputSchema: zodToJsonSchema(toolSchemas.get_blockers),
+  },
+ 
   // Subtask tools
   {
     name: 'create_subtask',

@@ -52,6 +52,22 @@ export class TaskService {
         }
       }
 
+      // Validate blocked_by_task_id if provided
+      if (params.blocked_by_task_id !== undefined) {
+        if (params.blocked_by_task_id !== null) {
+          // Check that the blocking task exists
+          const blocker = this.get(params.blocked_by_task_id);
+          if (!blocker) {
+            throw new Error(`Blocking task not found: ${params.blocked_by_task_id}`);
+          }
+          
+          // Check for cycles
+          if (this.wouldCreateCycleForBlocking(params.id || 0, params.blocked_by_task_id)) {
+            throw new Error('Cannot create circular blocking relationship');
+          }
+        }
+      }
+
       // Prepare data
       const status = params.status || 'idle';
       const priority = params.priority ?? 0;
@@ -59,8 +75,8 @@ export class TaskService {
       const queueName = params.queue_name !== undefined ? params.queue_name : parentQueueName;
 
       const result = this.db.execute(
-        `INSERT INTO tasks (title, description, status, assigned_to, created_by, priority, tags, parent_task_id, queue_name)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO tasks (title, description, status, assigned_to, created_by, priority, tags, parent_task_id, queue_name, blocked_by_task_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           params.title.trim(),
           params.description || null,
@@ -71,6 +87,7 @@ export class TaskService {
           tags,
           params.parent_task_id || null,
           queueName,
+          params.blocked_by_task_id || null,
         ]
       );
 
@@ -163,6 +180,22 @@ export class TaskService {
         }
       }
 
+      // Validate blocked_by_task_id if provided
+      if (updates.blocked_by_task_id !== undefined) {
+        if (updates.blocked_by_task_id !== null) {
+          // Check that the blocking task exists
+          const blocker = this.get(updates.blocked_by_task_id);
+          if (!blocker) {
+            throw new Error(`Blocking task not found: ${updates.blocked_by_task_id}`);
+          }
+          
+          // Check for cycles
+          if (this.wouldCreateCycleForBlocking(id, updates.blocked_by_task_id)) {
+            throw new Error('Cannot create circular blocking relationship');
+          }
+        }
+      }
+
       // Build update query dynamically
       const fields: string[] = [];
       const values: unknown[] = [];
@@ -220,6 +253,11 @@ export class TaskService {
         values.push(updates.queue_name);
       }
 
+      if (updates.blocked_by_task_id !== undefined) {
+        fields.push('blocked_by_task_id = ?');
+        values.push(updates.blocked_by_task_id);
+      }
+
       // Always update updated_at
       fields.push('updated_at = CURRENT_TIMESTAMP');
 
@@ -235,6 +273,21 @@ export class TaskService {
       const updated = this.get(id);
       if (!updated) {
         throw new Error('Failed to retrieve updated task');
+      }
+
+      // Handle status transitions for blocking logic
+      if (updates.status !== undefined) {
+        const newStatus = updates.status;
+        
+        // If task is being closed (completed), unblock any dependent tasks
+        if (newStatus === 'complete') {
+          this.unblockDependentTasks(id);
+        }
+        
+        // If task is being reopened (from complete), re-block dependent tasks if needed
+        else if (newStatus === 'idle' || newStatus === 'working') {
+          this.reblockDependentTasks(id);
+        }
       }
 
       return updated;
@@ -271,6 +324,11 @@ export class TaskService {
 
     if (!filters.include_archived) {
       conditions.push('archived_at IS NULL');
+    }
+
+    if (filters.blocked_by_task_id !== undefined) {
+      conditions.push('blocked_by_task_id = ?');
+      values.push(filters.blocked_by_task_id);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -529,6 +587,59 @@ export class TaskService {
 
     return depth;
   }
+
+ /**
+  * Unblocks dependent tasks when a blocking task is completed
+  */
+ private unblockDependentTasks(_blockingTaskId: number): void {
+   // Find all tasks that are blocked by this task and set their blocked_by_task_id to null
+   this.db.execute(
+     'UPDATE tasks SET blocked_by_task_id = NULL WHERE blocked_by_task_id = ?',
+     [_blockingTaskId]
+   );
+ }
+
+ /**
+  * Re-blocks dependent tasks when a blocking task is reopened
+  */
+ private reblockDependentTasks(blockingTaskId: number): void {
+   // This method can be extended in the future to handle more complex re-blocking logic
+   // For now, we just ensure that any tasks blocked by this task remain blocked if they should be
+   // This is a no-op for now, but can be enhanced with more complex logic if needed
+ }
+
+ /**
+  * Check if setting blocked_by_task_id would create a cycle
+  */
+ private wouldCreateCycleForBlocking(taskId: number, newBlockedById: number | null): boolean {
+   if (newBlockedById === null) {
+     return false;
+   }
+
+   // If the task is trying to block itself, that's a cycle
+   if (taskId === newBlockedById) {
+     return true;
+   }
+
+   // Check if the potential blocker is a descendant of this task (would create cycle)
+   let currentId: number | null = newBlockedById;
+   
+   while (currentId !== null) {
+     const task = this.get(currentId);
+     if (!task) {
+       break;
+     }
+     
+     // If we find the original task in the chain, it's a cycle
+     if (task.id === taskId) {
+       return true;
+     }
+     
+     currentId = task.blocked_by_task_id;
+   }
+
+   return false;
+ }
 
   /**
    * Parse task from database row (handle JSON tags)

@@ -61,6 +61,7 @@ export interface CreateTaskParams {
   tags?: string[];
   parent_task_id?: number;
   queue_name?: string;
+  blocked_by_task_id?: number | null;
 }
 
 export interface UpdateTaskParams {
@@ -72,6 +73,7 @@ export interface UpdateTaskParams {
   tags?: string[];
   parent_task_id?: number | null;
   queue_name?: string;
+  blocked_by_task_id?: number | null;
 }
 
 export interface TaskFilters {
@@ -83,6 +85,7 @@ export interface TaskFilters {
   queue_name?: string;
   parent_task_id?: number | null;
   exclude_subtasks?: boolean;
+  blocked_by_task_id?: number;
 }
 
 export interface CreateCommentParams {

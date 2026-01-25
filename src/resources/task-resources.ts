@@ -16,12 +16,18 @@ export async function handleTaskResource(taskService: TaskService, params: { id:
       throw new Error(`Task not found: ${taskId}`);
     }
 
+    // Ensure blocked_by_task_id is included in the response
+    const taskWithBlockedBy = {
+      ...task,
+      blocked_by_task_id: task.blocked_by_task_id,
+    };
+
     return {
       contents: [
         {
           uri: `task://${taskId}`,
           mimeType: 'application/json',
-          text: JSON.stringify(task, null, 2),
+          text: JSON.stringify(taskWithBlockedBy, null, 2),
         },
       ],
     };

@@ -44,6 +44,10 @@ import {
   getQueueTasksHandler,
   clearQueueHandler,
 } from './queue-tools.js';
+import {
+  setBlockedByHandler,
+  getBlockersHandler,
+} from './task-tools.js';
 import type {
   CreateTaskParams,
   UpdateTaskParams,
@@ -149,6 +153,14 @@ export function registerToolHandlers(
           break;
         case 'move_task':
           result = await moveTaskHandler(taskService, validatedArgs as MoveTaskParams);
+          break;
+
+        // Blocking tools
+        case 'set_blocked_by':
+          result = await setBlockedByHandler(taskService, validatedArgs);
+          break;
+        case 'get_blockers':
+          result = await getBlockersHandler(taskService, validatedArgs);
           break;
 
         // Subtask tools

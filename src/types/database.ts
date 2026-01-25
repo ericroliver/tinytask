@@ -14,6 +14,7 @@ export interface Task {
   tags: string | null; // JSON array
   parent_task_id: number | null;
   queue_name: string | null;
+  blocked_by_task_id: number | null;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
@@ -55,6 +56,7 @@ export interface CreateTaskInput {
   created_by?: string;
   priority?: number;
   tags?: string[];
+  blocked_by_task_id?: number | null;
 }
 
 export interface UpdateTaskInput {
@@ -64,6 +66,7 @@ export interface UpdateTaskInput {
   assigned_to?: string;
   priority?: number;
   tags?: string[];
+  blocked_by_task_id?: number | null;
 }
 
 export interface CreateCommentInput {

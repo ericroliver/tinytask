@@ -170,3 +170,13 @@ export interface GetQueueTasksParams {
 export interface ClearQueueParams {
   queue_name: string;
 }
+
+// Blocking handler parameter types
+export interface SetBlockedByParams {
+  task_id: number;
+  blocker_task_id: number | null;
+}
+
+export interface GetBlockersParams {
+  task_id: number;
+}
