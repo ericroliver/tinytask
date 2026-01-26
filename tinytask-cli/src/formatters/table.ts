@@ -11,12 +11,12 @@ export class TableFormatter implements Formatter {
     }
 
     const table = new Table({
-      head: this.formatHeader(['ID', 'Title', 'Status', 'Assigned', 'Queue', 'Parent', 'Priority']),
+      head: this.formatHeader(['ID', 'Title', 'Status', 'Assigned', 'Queue', 'Parent', 'Priority', 'Blocked By']),
       style: {
         head: [],
         border: this.options.color ? ['gray'] : [],
       },
-      colWidths: [6, 32, 12, 13, 12, 8, 10],
+      colWidths: [6, 38, 12, 18, 12, 8, 10, 12],
       wordWrap: true,
     });
 
@@ -47,12 +47,13 @@ export class TableFormatter implements Formatter {
       const t = task as Record<string, unknown>;
       table.push([
         this.formatId(t.id as number),
-        this.truncate(String(t.title), 30),
+        this.truncate(String(t.title), 36),
         this.formatStatus(String(t.status)),
         this.formatAssignee(t.assigned_to as string | null),
         this.formatQueueName(t.queue_name as string | null),
         this.formatParent(t.parent_task_id as number | null),
         this.formatPriority(t.priority as number),
+        this.formatBlockedBy(t.blocked_by_task_id as number | null, t.is_currently_blocked as boolean),
       ]);
 
       // Add subtasks if any
@@ -62,12 +63,13 @@ export class TableFormatter implements Formatter {
           const st = subtask as Record<string, unknown>;
           table.push([
             this.formatId(st.id as number),
-            '  ' + this.truncate(String(st.title), 28), // Indent subtask titles
+            '  ' + this.truncate(String(st.title), 34), // Indent subtask titles
             this.formatStatus(String(st.status)),
             this.formatAssignee(st.assigned_to as string | null),
             this.formatQueueName(st.queue_name as string | null),
             this.formatParent(st.parent_task_id as number | null),
             this.formatPriority(st.priority as number),
+            this.formatBlockedBy(st.blocked_by_task_id as number | null, st.is_currently_blocked as boolean),
           ]);
         });
       }
@@ -114,6 +116,12 @@ export class TableFormatter implements Formatter {
     lines.push(
       `${this.options.color ? chalk.gray('Updated:') : 'Updated:'}     ${this.formatDate(String(task.updated_at))}`
     );
+
+    if (task.blocked_by_task_id && task.is_currently_blocked) {
+      lines.push(
+        `${this.options.color ? chalk.gray('Blocked by:') : 'Blocked by:'} ${this.formatBlockedBy(task.blocked_by_task_id as number, task.is_currently_blocked as boolean)}`
+      );
+    }
 
     if (Array.isArray(task.comments) && task.comments.length > 0) {
       lines.push('');
@@ -322,6 +330,13 @@ export class TableFormatter implements Formatter {
       return this.options.color ? chalk.gray('-') : '-';
     }
     return this.options.color ? chalk.magenta(`#${parentId}`) : `#${parentId}`;
+  }
+
+  private formatBlockedBy(blockedById: number | null, isCurrentlyBlocked?: boolean): string {
+    if (!blockedById || isCurrentlyBlocked === false) {
+      return this.options.color ? chalk.gray('-') : '-';
+    }
+    return this.options.color ? chalk.red(`#${blockedById}`) : `#${blockedById}`;
   }
 
   private formatDate(dateStr: string): string {

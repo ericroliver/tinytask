@@ -98,6 +98,12 @@ export class CompactFormatter implements Formatter {
       parts.push(`p:${t.priority}`);
     }
 
+    // Blocked by
+    if (t.blocked_by_task_id && t.is_currently_blocked) {
+      const blockedText = `blocked:#${t.blocked_by_task_id}`;
+      parts.push(this.options.color ? chalk.red(blockedText) : blockedText);
+    }
+
     // Tags
     if (Array.isArray(t.tags) && t.tags.length > 0) {
       parts.push(`[${t.tags.join(', ')}]`);

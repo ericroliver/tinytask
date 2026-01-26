@@ -15,15 +15,18 @@ CREATE TABLE tasks (
     description TEXT,
     status TEXT NOT NULL CHECK(status IN ('idle', 'working', 'complete')),
     assigned_to TEXT,
+    previous_assigned_to TEXT,
     created_by TEXT,
     priority INTEGER DEFAULT 0,
     tags TEXT,  -- JSON array of tags
     parent_task_id INTEGER,  -- For hierarchical subtasks
     queue_name TEXT,  -- For queue-based task organization
+    blocked_by_task_id INTEGER,  -- For task blocking relationships
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     archived_at DATETIME,
-    FOREIGN KEY (parent_task_id) REFERENCES tasks(id) ON DELETE CASCADE
+    FOREIGN KEY (parent_task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+    FOREIGN KEY (blocked_by_task_id) REFERENCES tasks(id) ON DELETE SET NULL
 );
 
 -- Indexes for performance
@@ -34,17 +37,21 @@ CREATE INDEX idx_tasks_archived ON tasks(archived_at);
 CREATE INDEX idx_tasks_parent_task_id ON tasks(parent_task_id);
 CREATE INDEX idx_tasks_queue_name ON tasks(queue_name);
 CREATE INDEX idx_tasks_queue_status ON tasks(queue_name, status);
+CREATE INDEX idx_tasks_blocked_by ON tasks(blocked_by_task_id);
 ```
 
 **Key Design Decisions:**
 - `assigned_to` is TEXT to allow flexible agent names without validation
+- `previous_assigned_to` tracks task handoff history
 - `tags` stored as JSON for flexibility
 - `archived_at` NULL means active, non-NULL means archived
 - Compound index on `(assigned_to, status)` for efficient queue queries
 - `parent_task_id` enables hierarchical task organization with CASCADE delete
 - `queue_name` allows flexible queue-based task organization
+- `blocked_by_task_id` enables task blocking with SET NULL on delete (preserves blocked task if blocker is deleted)
 - Maximum nesting depth of 4 levels enforced at application layer
-- Indexes on `parent_task_id` and `queue_name` for efficient subtask and queue queries
+- Indexes on `parent_task_id`, `queue_name`, and `blocked_by_task_id` for efficient queries
+- Blocking state (`is_currently_blocked`) computed at query time based on blocking task status
 
 ### comments
 Comments associated with tasks, with full CRUD support for LLMs.

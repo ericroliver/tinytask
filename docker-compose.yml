@@ -2,7 +2,7 @@
 services:
   tinytask:
     image: tinytask-mcp:latest
-    container_name: tinytask-mcp
+    container_name: tinytask
     build:
       context: .
       dockerfile: Dockerfile

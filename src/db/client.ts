@@ -85,6 +85,83 @@ export class DatabaseClient {
         ALTER TABLE tasks ADD COLUMN previous_assigned_to TEXT;
       `);
     }
+
+    // Migration: Add blocked_by_task_id column if it doesn't exist
+    // Since SQLite doesn't support adding FOREIGN KEY constraints to existing tables,
+    // we need to rebuild the table if the column doesn't exist
+    if (!this.columnExists('tasks', 'blocked_by_task_id')) {
+      // Disable foreign keys temporarily
+      this.db.exec('PRAGMA foreign_keys = OFF;');
+      
+      // Begin transaction for table rebuild
+      this.db.exec('BEGIN TRANSACTION;');
+      
+      try {
+        // Create new table with the blocked_by_task_id column and constraint
+        this.db.exec(`
+          CREATE TABLE tasks_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            description TEXT,
+            status TEXT NOT NULL CHECK(status IN ('idle', 'working', 'complete')),
+            assigned_to TEXT,
+            previous_assigned_to TEXT,
+            created_by TEXT,
+            priority INTEGER DEFAULT 0,
+            tags TEXT,
+            parent_task_id INTEGER,
+            queue_name TEXT,
+            blocked_by_task_id INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            archived_at DATETIME,
+            FOREIGN KEY (parent_task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+            FOREIGN KEY (blocked_by_task_id) REFERENCES tasks(id) ON DELETE SET NULL
+          );
+        `);
+        
+        // Copy data from old table to new table
+        this.db.exec(`
+          INSERT INTO tasks_new (
+            id, title, description, status, assigned_to, previous_assigned_to,
+            created_by, priority, tags, parent_task_id, queue_name,
+            created_at, updated_at, archived_at
+          )
+          SELECT
+            id, title, description, status, assigned_to, previous_assigned_to,
+            created_by, priority, tags, parent_task_id, queue_name,
+            created_at, updated_at, archived_at
+          FROM tasks;
+        `);
+        
+        // Drop old table
+        this.db.exec('DROP TABLE tasks;');
+        
+        // Rename new table to tasks
+        this.db.exec('ALTER TABLE tasks_new RENAME TO tasks;');
+        
+        // Recreate all indexes
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_assigned_to ON tasks(assigned_to);');
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);');
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_assigned_status ON tasks(assigned_to, status);');
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_archived ON tasks(archived_at);');
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_parent_task_id ON tasks(parent_task_id);');
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_queue_name ON tasks(queue_name);');
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_queue_status ON tasks(queue_name, status);');
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_queue_assigned ON tasks(queue_name, assigned_to);');
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_blocked_by ON tasks(blocked_by_task_id);');
+        
+        // Commit transaction
+        this.db.exec('COMMIT;');
+      } catch (error) {
+        // Rollback on error
+        this.db.exec('ROLLBACK;');
+        throw error;
+      } finally {
+        // Re-enable foreign keys
+        this.db.exec('PRAGMA foreign_keys = ON;');
+      }
+    }
   }
 
   /**

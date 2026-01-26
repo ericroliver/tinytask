@@ -9,6 +9,7 @@ describe('TableFormatter', () => {
       status: 'idle',
       assigned_to: 'alice',
       priority: 5,
+      blocked_by_task_id: null,
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-01T00:00:00Z',
     },
@@ -62,5 +63,34 @@ describe('TableFormatter', () => {
 
     expect(output).toContain('Queue for test-agent');
     expect(output).toContain('1 task');
+  });
+
+  it('should display blocked_by field when task is blocked', () => {
+    const blockedTask = {
+      ...tasks[0],
+      blocked_by_task_id: 42,
+      is_currently_blocked: true,
+    };
+
+    const formatter = new TableFormatter({ color: false, verbose: false });
+    const output = formatter.formatTask(blockedTask);
+
+    expect(output).toContain('Blocked by:');
+    expect(output).toContain('#42');
+  });
+
+  it('should show blocked status in task list', () => {
+    const blockedTask = {
+      ...tasks[0],
+      id: 2,
+      title: 'Blocked Task',
+      blocked_by_task_id: 1,
+    };
+
+    const formatter = new TableFormatter({ color: false, verbose: false });
+    const output = formatter.formatTasks([tasks[0], blockedTask]);
+
+    expect(output).toContain('Blocked Task');
+    expect(output).toContain('#1');
   });
 });
