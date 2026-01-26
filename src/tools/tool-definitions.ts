@@ -188,8 +188,13 @@ function zodToJsonSchema(schema: z.ZodObject<z.ZodRawShape>): Record<string, unk
   const required: string[] = [];
 
   for (const [key, value] of Object.entries(shape)) {
-    const zodType = value as z.ZodTypeAny;
+    let zodType = value as z.ZodTypeAny;
     const description = zodType.description || '';
+
+    // Unwrap ZodEffects (used by z.coerce) to get the underlying type
+    if (zodType instanceof z.ZodEffects) {
+      zodType = zodType._def.schema;
+    }
 
     // Handle different Zod types
     if (zodType instanceof z.ZodString) {
@@ -208,11 +213,22 @@ function zodToJsonSchema(schema: z.ZodObject<z.ZodRawShape>): Record<string, unk
       };
     } else if (zodType instanceof z.ZodOptional) {
       // Recursive handling for optional types
-      const innerType = zodType._def.innerType;
+      let innerType = zodType._def.innerType;
+      
+      // Unwrap ZodEffects in optional types as well
+      if (innerType instanceof z.ZodEffects) {
+        innerType = innerType._def.schema;
+      }
       
       // Handle nullable types (e.g., z.number().nullable())
       if (innerType instanceof z.ZodNullable) {
-        const innerNullableType = innerType._def.innerType;
+        let innerNullableType = innerType._def.innerType;
+        
+        // Unwrap ZodEffects in nullable types
+        if (innerNullableType instanceof z.ZodEffects) {
+          innerNullableType = innerNullableType._def.schema;
+        }
+        
         if (innerNullableType instanceof z.ZodNumber) {
           properties[key] = { type: ['number', 'null'], description };
         } else if (innerNullableType instanceof z.ZodString) {
@@ -237,8 +253,12 @@ function zodToJsonSchema(schema: z.ZodObject<z.ZodRawShape>): Record<string, unk
       }
     }
 
-    // Check if required
-    if (!(zodType instanceof z.ZodOptional)) {
+    // Check if required (unwrap ZodEffects first)
+    let typeToCheck = value as z.ZodTypeAny;
+    if (typeToCheck instanceof z.ZodEffects) {
+      typeToCheck = typeToCheck._def.schema;
+    }
+    if (!(typeToCheck instanceof z.ZodOptional)) {
       required.push(key);
     }
   }

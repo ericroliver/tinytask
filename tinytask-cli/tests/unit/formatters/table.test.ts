@@ -69,6 +69,7 @@ describe('TableFormatter', () => {
     const blockedTask = {
       ...tasks[0],
       blocked_by_task_id: 42,
+      is_currently_blocked: true,
     };
 
     const formatter = new TableFormatter({ color: false, verbose: false });
