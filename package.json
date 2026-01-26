@@ -1,7 +1,7 @@
 {
-  "name": "tinytask-mcp",
+  "name": "tinytask",
   "version": "2.0.0",
-  "description": "TinyTask is a minimal task management system for LLMs exposed as an MCP server",
+  "description": "TinyTask is a minimal task management system for LLMs exposed as an MCP server, API and CLI",
   "type": "module",
   "main": "build/index.js",
   "bin": {
