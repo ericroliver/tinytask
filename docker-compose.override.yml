@@ -1,0 +1,29 @@
+# docker-compose.override.yml.example
+# Copy this file to docker-compose.override.yml and customize for your local development setup
+# The docker-compose.override.yml file is automatically loaded by Docker Compose
+
+services:
+  tinytask:
+    # Development port mapping
+    # Customize the external port (left side) if 3081 is already in use on your machine
+    ports:
+      - "3081:3000"
+    
+    # Development volume mounts
+    volumes:
+      # Persistent database storage
+      # IMPORTANT: Update this path to match your local setup
+      - /home/eo/config/tinytask/data:/data
+      # Alternative examples:
+      # - ./data:/data                           # Relative to project directory
+      # - /your/custom/path/tinytask/data:/data  # Custom absolute path
+    
+    # Development environment overrides
+    environment:
+      # Log level for development
+      # Options: error, warn, info, debug, trace
+      # Use 'trace' for forensic debugging, 'debug' for development, 'info' for production
+      TINYTASK_LOG_LEVEL: trace
+      
+      # Development mode
+      NODE_ENV: development
