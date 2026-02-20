@@ -94,7 +94,7 @@ export class TaskService {
       const parsedTask = this.parseTask(task);
 
       // If this is a subtask, update parent status
-      if (params.parent_task_id) {
+      if (params.parent_task_id != null) {
         this.updateParentStatus(params.parent_task_id);
       }
 
@@ -280,7 +280,7 @@ export class TaskService {
       }
 
       // If status changed and task has a parent, update parent status
-      if (updates.status !== undefined && existing.parent_task_id) {
+      if (updates.status !== undefined && existing.parent_task_id != null) {
         this.updateParentStatus(existing.parent_task_id);
       }
 
@@ -303,7 +303,7 @@ export class TaskService {
     }
 
     // Update parent status if task had a parent
-    if (parentId) {
+    if (parentId != null) {
       this.updateParentStatus(parentId);
     }
   }
@@ -379,7 +379,7 @@ export class TaskService {
       }
 
       // Update parent status if task had a parent
-      if (existing.parent_task_id) {
+      if (existing.parent_task_id != null) {
         this.updateParentStatus(existing.parent_task_id);
       }
 
@@ -695,7 +695,7 @@ export class TaskService {
         [parentId]
       );
       
-      if (updatedParent?.parent_task_id) {
+      if (updatedParent?.parent_task_id != null) {
         this.updateParentStatus(updatedParent.parent_task_id);
       }
     }
