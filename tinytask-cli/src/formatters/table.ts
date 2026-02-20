@@ -5,6 +5,38 @@ import { Formatter, FormatterOptions } from './types.js';
 export class TableFormatter implements Formatter {
   constructor(private options: FormatterOptions) {}
 
+  /**
+   * Wrap text with indentation for continuation lines
+   */
+  private wrapWithIndent(text: string, maxWidth: number, indent: string): string {
+    if (text.length <= maxWidth) {
+      return text;
+    }
+
+    const lines: string[] = [];
+    let currentLine = '';
+    const words = text.split(' ');
+
+    for (const word of words) {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      
+      if (testLine.length <= maxWidth) {
+        currentLine = testLine;
+      } else {
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+        currentLine = indent + word;
+      }
+    }
+
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+
+    return lines.join('\n');
+  }
+
   formatTasks(tasks: unknown[]): string {
     if (tasks.length === 0) {
       return this.options.color ? chalk.yellow('No tasks found') : 'No tasks found';
@@ -16,7 +48,7 @@ export class TableFormatter implements Formatter {
         head: [],
         border: this.options.color ? ['gray'] : [],
       },
-      colWidths: [6, 38, 12, 18, 12, 8, 10, 12],
+      colWidths: [6, 58, 12, 18, 17, 8, 10, 12],
       wordWrap: true,
     });
 
@@ -47,7 +79,7 @@ export class TableFormatter implements Formatter {
       const t = task as Record<string, unknown>;
       table.push([
         this.formatId(t.id as number),
-        this.truncate(String(t.title), 36),
+        String(t.title), // No truncation, let wordWrap handle it
         this.formatStatus(String(t.status)),
         this.formatAssignee(t.assigned_to as string | null),
         this.formatQueueName(t.queue_name as string | null),
@@ -61,9 +93,11 @@ export class TableFormatter implements Formatter {
       if (subtasks && subtasks.length > 0) {
         subtasks.forEach((subtask) => {
           const st = subtask as Record<string, unknown>;
+          // Wrap subtask titles with indentation for continuation lines
+          const wrappedTitle = this.wrapWithIndent('  ' + String(st.title), 56, '  ');
           table.push([
             this.formatId(st.id as number),
-            '  ' + this.truncate(String(st.title), 34), // Indent subtask titles
+            wrappedTitle,
             this.formatStatus(String(st.status)),
             this.formatAssignee(st.assigned_to as string | null),
             this.formatQueueName(st.queue_name as string | null),

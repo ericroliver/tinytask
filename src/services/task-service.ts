@@ -91,7 +91,14 @@ export class TaskService {
         throw new Error('Failed to retrieve created task');
       }
 
-      return this.parseTask(task);
+      const parsedTask = this.parseTask(task);
+
+      // If this is a subtask, update parent status
+      if (params.parent_task_id != null) {
+        this.updateParentStatus(params.parent_task_id);
+      }
+
+      return parsedTask;
     });
   }
 
@@ -272,6 +279,23 @@ export class TaskService {
         throw new Error('Failed to retrieve updated task');
       }
 
+      // Update parent status when status changes or parent changes
+      if (updates.status !== undefined && existing.parent_task_id != null) {
+        this.updateParentStatus(existing.parent_task_id);
+      }
+
+      // If parent_task_id changed, update both old and new parents
+      if (updates.parent_task_id !== undefined) {
+        // Update old parent (if it existed)
+        if (existing.parent_task_id != null) {
+          this.updateParentStatus(existing.parent_task_id);
+        }
+        // Update new parent (if it exists)
+        if (updates.parent_task_id != null) {
+          this.updateParentStatus(updates.parent_task_id);
+        }
+      }
+
       return updated;
     });
   }
@@ -280,11 +304,22 @@ export class TaskService {
    * Delete task permanently
    */
   delete(id: number): void {
-    const result = this.db.execute('DELETE FROM tasks WHERE id = ?', [id]);
+    this.db.transaction(() => {
+      // Get parent_task_id before deletion
+      const task = this.db.queryOne<Task>('SELECT parent_task_id FROM tasks WHERE id = ?', [id]);
+      const parentId = task?.parent_task_id;
 
-    if (result.changes === 0) {
-      throw new Error(`Task not found: ${id}`);
-    }
+      const result = this.db.execute('DELETE FROM tasks WHERE id = ?', [id]);
+
+      if (result.changes === 0) {
+        throw new Error(`Task not found: ${id}`);
+      }
+
+      // Update parent status if task had a parent
+      if (parentId != null) {
+        this.updateParentStatus(parentId);
+      }
+    });
   }
 
   /**
@@ -357,6 +392,11 @@ export class TaskService {
         throw new Error('Failed to retrieve archived task');
       }
 
+      // Update parent status if task had a parent
+      if (existing.parent_task_id != null) {
+        this.updateParentStatus(existing.parent_task_id);
+      }
+
       return archived;
     });
   }
@@ -387,6 +427,11 @@ export class TaskService {
         'UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
         ['working', task.id]
       );
+
+      // Update parent status if task is a subtask
+      if (task.parent_task_id != null) {
+        this.updateParentStatus(task.parent_task_id);
+      }
 
       // Return task with relations
       const updatedTask = this.get(task.id, true);
@@ -435,6 +480,11 @@ export class TaskService {
          WHERE id = ?`,
         [newAgent, currentAgent, taskId]
       );
+
+      // Update parent status if task is a subtask (status changed to idle)
+      if (task.parent_task_id != null) {
+        this.updateParentStatus(task.parent_task_id);
+      }
 
       // Add handoff comment
       this.db.execute(
@@ -613,5 +663,65 @@ export class TaskService {
       tags: task.tags ? JSON.parse(task.tags as string) : [],
       is_currently_blocked: this.isCurrentlyBlocked(task),
     };
+  }
+
+  /**
+   * Update parent task status based on child task statuses
+   * Business rules:
+   * - If all children are 'complete' → parent is 'complete'
+   * - Else if any child is 'working' → parent is 'working'
+   * - Else (all children are 'idle') → parent is 'idle'
+   */
+  private updateParentStatus(parentId: number): void {
+    // Get all non-archived children
+    const children = this.db.query<Task>(
+      `SELECT id, status FROM tasks
+       WHERE parent_task_id = ?
+         AND archived_at IS NULL`,
+      [parentId]
+    );
+
+    // If no children, don't change parent status
+    if (children.length === 0) {
+      return;
+    }
+
+    // Determine parent status based on children
+    let newStatus: TaskStatus;
+    
+    const allComplete = children.every(child => child.status === 'complete');
+    const anyWorking = children.some(child => child.status === 'working');
+    
+    if (allComplete) {
+      newStatus = 'complete';
+    } else if (anyWorking) {
+      newStatus = 'working';
+    } else {
+      // All children must be idle
+      newStatus = 'idle';
+    }
+
+    // Update parent status if it changed
+    const parent = this.db.queryOne<Task>(
+      'SELECT id, status FROM tasks WHERE id = ?',
+      [parentId]
+    );
+
+    if (parent && parent.status !== newStatus) {
+      this.db.execute(
+        'UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [newStatus, parentId]
+      );
+
+      // Recursively update grandparent if exists
+      const updatedParent = this.db.queryOne<Task>(
+        'SELECT parent_task_id FROM tasks WHERE id = ?',
+        [parentId]
+      );
+      
+      if (updatedParent?.parent_task_id != null) {
+        this.updateParentStatus(updatedParent.parent_task_id);
+      }
+    }
   }
 }
