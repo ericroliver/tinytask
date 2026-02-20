@@ -8,7 +8,7 @@
  * - Status propagates recursively through multiple levels
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { DatabaseClient } from '../../src/db/client.js';
 import { TaskService } from '../../src/services/task-service.js';
 import { TaskStatus } from '../../src/types/index.js';
@@ -22,6 +22,11 @@ describe('Parent Status Propagation', () => {
     db = new DatabaseClient(':memory:');
     db.initialize();
     taskService = new TaskService(db);
+  });
+
+  afterEach(() => {
+    // Close database to avoid leaking resources
+    db.close();
   });
 
   describe('Single-level hierarchy', () => {
@@ -355,8 +360,8 @@ describe('Parent Status Propagation', () => {
         status: 'working',
       });
 
-      // Manually call updateParentStatus (this shouldn't happen in practice)
-      // Just to verify it doesn't crash
+      // Verify that a parent with no children retains its status
+      // and that querying it does not cause any errors
       expect(taskService.get(parent.id)?.status).toBe('working');
     });
 

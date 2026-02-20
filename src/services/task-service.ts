@@ -279,9 +279,21 @@ export class TaskService {
         throw new Error('Failed to retrieve updated task');
       }
 
-      // If status changed and task has a parent, update parent status
+      // Update parent status when status changes or parent changes
       if (updates.status !== undefined && existing.parent_task_id != null) {
         this.updateParentStatus(existing.parent_task_id);
+      }
+
+      // If parent_task_id changed, update both old and new parents
+      if (updates.parent_task_id !== undefined) {
+        // Update old parent (if it existed)
+        if (existing.parent_task_id != null) {
+          this.updateParentStatus(existing.parent_task_id);
+        }
+        // Update new parent (if it exists)
+        if (updates.parent_task_id != null) {
+          this.updateParentStatus(updates.parent_task_id);
+        }
       }
 
       return updated;
@@ -292,20 +304,22 @@ export class TaskService {
    * Delete task permanently
    */
   delete(id: number): void {
-    // Get parent_task_id before deletion
-    const task = this.db.queryOne<Task>('SELECT parent_task_id FROM tasks WHERE id = ?', [id]);
-    const parentId = task?.parent_task_id;
+    this.db.transaction(() => {
+      // Get parent_task_id before deletion
+      const task = this.db.queryOne<Task>('SELECT parent_task_id FROM tasks WHERE id = ?', [id]);
+      const parentId = task?.parent_task_id;
 
-    const result = this.db.execute('DELETE FROM tasks WHERE id = ?', [id]);
+      const result = this.db.execute('DELETE FROM tasks WHERE id = ?', [id]);
 
-    if (result.changes === 0) {
-      throw new Error(`Task not found: ${id}`);
-    }
+      if (result.changes === 0) {
+        throw new Error(`Task not found: ${id}`);
+      }
 
-    // Update parent status if task had a parent
-    if (parentId != null) {
-      this.updateParentStatus(parentId);
-    }
+      // Update parent status if task had a parent
+      if (parentId != null) {
+        this.updateParentStatus(parentId);
+      }
+    });
   }
 
   /**
@@ -414,6 +428,11 @@ export class TaskService {
         ['working', task.id]
       );
 
+      // Update parent status if task is a subtask
+      if (task.parent_task_id != null) {
+        this.updateParentStatus(task.parent_task_id);
+      }
+
       // Return task with relations
       const updatedTask = this.get(task.id, true);
       if (!updatedTask) {
@@ -461,6 +480,11 @@ export class TaskService {
          WHERE id = ?`,
         [newAgent, currentAgent, taskId]
       );
+
+      // Update parent status if task is a subtask (status changed to idle)
+      if (task.parent_task_id != null) {
+        this.updateParentStatus(task.parent_task_id);
+      }
 
       // Add handoff comment
       this.db.execute(
