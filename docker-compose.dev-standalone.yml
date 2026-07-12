@@ -1,0 +1,27 @@
+# Standalone dev instance - port 3001, separate from prod
+services:
+  tinytask-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: tinytask-mcp-dev
+    ports:
+      - "3001:3000"
+      - "9231:9229"
+    volumes:
+      - ./src:/app/src:ro
+      - /home/eo/config/tinytask/data-dev:/data
+    environment:
+      TINYTASK_MODE: http
+      TINYTASK_PORT: 3000
+      TINYTASK_HOST: 0.0.0.0
+      TINYTASK_DB_PATH: /data/tinytask-dev.db
+      TINYTASK_LOG_LEVEL: debug
+      NODE_ENV: development
+    command: npm run dev
+    networks:
+      - tinytask-network
+
+networks:
+  tinytask-network:
+    driver: bridge

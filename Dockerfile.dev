@@ -3,8 +3,8 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Install dumb-init and build tools for native modules
+RUN apk add --no-cache dumb-init python3 make g++
 
 # Create data directory
 RUN mkdir -p /data && chown node:node /data
@@ -12,16 +12,22 @@ RUN mkdir -p /data && chown node:node /data
 # Copy package files
 COPY package*.json tsconfig.json ./
 
-# Install all dependencies (including dev)
-RUN npm install
+# Install all dependencies (skip prepare script - no src yet)
+RUN npm install --ignore-scripts
+
+# Rebuild native modules
+RUN npm rebuild better-sqlite3
 
 # Copy source code
 COPY src ./src
 
+# Build TypeScript
+RUN npm run build
+
 # Use non-root user
 USER node
 
-# Expose SSE port and debug port
+# Expose HTTP port and debug port
 EXPOSE 3000 9229
 
 # Use dumb-init to handle signals

@@ -10,6 +10,8 @@ import { Server as HttpServer } from 'http';
 import { logger } from '../utils/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createMcpServer } from './mcp-server.js';
+import { createRestRouter } from './rest.js';
+import { generateOpenApiSpec } from './openapi.js';
 
 /**
  * Configuration options for SSE server
@@ -69,7 +71,15 @@ export async function startSseServer(
     });
   });
 
-  // SSE endpoint for MCP protocol - GET establishes the SSE stream
+  // REST API adapter for Shogun test coverage
+  app.use('/api/v1', createRestRouter(taskService, commentService, linkService, queueService));
+
+  // OpenAPI specification endpoint
+  app.get('/openapi.json', (_req, res) => {
+    res.json(generateOpenApiSpec());
+  });
+
+  // SSE endpoint for MCP protocol
   app.get('/mcp', async (req, res) => {
     logger.info('🔌 NEW SSE CONNECTION REQUEST', {
       clientIp: req.ip,
