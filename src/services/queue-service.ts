@@ -4,6 +4,7 @@
 
 import { DatabaseClient } from '../db/client.js';
 import { Task, ParsedTask, QueueStats, TaskFilters } from '../types/index.js';
+import { toISO8601 } from '../utils/timestamp.js';
 
 export class QueueService {
   constructor(private db: DatabaseClient) {}
@@ -289,6 +290,9 @@ export class QueueService {
       ...task,
       tags: task.tags ? JSON.parse(task.tags as string) : [],
       is_currently_blocked: this.isCurrentlyBlocked(task),
+      created_at: toISO8601(task.created_at),
+      updated_at: toISO8601(task.updated_at),
+      archived_at: task.archived_at ? toISO8601(task.archived_at) : null,
     };
   }
 }

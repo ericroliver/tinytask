@@ -42,6 +42,15 @@ export function createRestRouter(
   // POST /api/v1/tasks — create_task
   router.post('/tasks', (req: Request, res: Response) => {
     try {
+      // Validate priority: must be a finite number if provided
+      if (
+        req.body.priority !== undefined &&
+        (typeof req.body.priority !== 'number' || !Number.isFinite(req.body.priority))
+      ) {
+        res.status(400).json({ error: 'priority must be a finite number' });
+        return;
+      }
+
       const task = taskService.create({
         title: req.body.title,
         description: req.body.description,
@@ -69,7 +78,11 @@ export function createRestRouter(
         limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
         offset: req.query.offset ? parseInt(req.query.offset as string, 10) : undefined,
         queue_name: req.query.queue_name as string | undefined,
-        parent_task_id: req.query.parent_task_id ? parseInt(req.query.parent_task_id as string, 10) : undefined,
+        parent_task_id: (() => {
+          if (!req.query.parent_task_id) return undefined;
+          const parsed = parseInt(req.query.parent_task_id as string, 10);
+          return Number.isNaN(parsed) ? undefined : parsed;
+        })(),
         exclude_subtasks: req.query.exclude_subtasks === 'true',
       });
       res.json(tasks);
@@ -82,6 +95,10 @@ export function createRestRouter(
   router.get('/tasks/:id', (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        res.status(400).json({ error: `Invalid task ID: ${req.params.id}` });
+        return;
+      }
       const task = taskService.get(id, true);
       if (!task) {
         res.status(404).json({ error: `Task ${id} not found` });
@@ -335,7 +352,11 @@ export function createRestRouter(
       const tasks = queueService.getQueueTasks(req.params.name, {
         assigned_to: req.query.assigned_to as string | undefined,
         status: req.query.status as 'idle' | 'working' | 'complete' | undefined,
-        parent_task_id: req.query.parent_task_id ? parseInt(req.query.parent_task_id as string, 10) : undefined,
+        parent_task_id: (() => {
+          if (!req.query.parent_task_id) return undefined;
+          const parsed = parseInt(req.query.parent_task_id as string, 10);
+          return Number.isNaN(parsed) ? undefined : parsed;
+        })(),
         exclude_subtasks: req.query.exclude_subtasks === 'true',
         include_archived: req.query.include_archived === 'true',
         limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,

@@ -3,15 +3,27 @@
  */
 
 import { DatabaseClient } from '../db/client.js';
-import { Comment, CreateCommentParams } from '../types/index.js';
+import { Comment, CreateCommentParams, CommentData } from '../types/index.js';
+import { toISO8601 } from '../utils/timestamp.js';
 
 export class CommentService {
   constructor(private db: DatabaseClient) {}
 
   /**
+   * Parse comment from database row (convert timestamps to ISO 8601)
+   */
+  private parseComment(comment: Comment): CommentData {
+    return {
+      ...comment,
+      created_at: toISO8601(comment.created_at),
+      updated_at: toISO8601(comment.updated_at),
+    };
+  }
+
+  /**
    * Create a new comment
    */
-  create(params: CreateCommentParams): Comment {
+  create(params: CreateCommentParams): CommentData {
     // Validate required fields
     if (!params.content || params.content.trim().length === 0) {
       throw new Error('Comment content is required');
@@ -39,21 +51,22 @@ export class CommentService {
         throw new Error('Failed to retrieve created comment');
       }
 
-      return comment;
+      return this.parseComment(comment);
     });
   }
 
   /**
    * Get comment by ID
    */
-  get(id: number): Comment | null {
-    return this.db.queryOne<Comment>('SELECT * FROM comments WHERE id = ?', [id]);
+  get(id: number): CommentData | null {
+    const comment = this.db.queryOne<Comment>('SELECT * FROM comments WHERE id = ?', [id]);
+    return comment ? this.parseComment(comment) : null;
   }
 
   /**
    * Update comment content
    */
-  update(id: number, content: string): Comment {
+  update(id: number, content: string): CommentData {
     // Use a transaction to ensure atomic execution and immediate lock release
     return this.db.transaction(() => {
       // Validate content
@@ -72,12 +85,12 @@ export class CommentService {
         [content.trim(), id]
       );
 
-      const updated = this.get(id);
+      const updated = this.db.queryOne<Comment>('SELECT * FROM comments WHERE id = ?', [id]);
       if (!updated) {
         throw new Error('Failed to retrieve updated comment');
       }
 
-      return updated;
+      return this.parseComment(updated);
     });
   }
 
@@ -95,10 +108,11 @@ export class CommentService {
   /**
    * List all comments for a task
    */
-  listByTask(taskId: number): Comment[] {
-    return this.db.query<Comment>(
+  listByTask(taskId: number): CommentData[] {
+    const comments = this.db.query<Comment>(
       'SELECT * FROM comments WHERE task_id = ? ORDER BY created_at ASC',
       [taskId]
     );
+    return comments.map(c => this.parseComment(c));
   }
 }
