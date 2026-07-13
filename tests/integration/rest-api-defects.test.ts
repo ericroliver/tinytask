@@ -93,6 +93,24 @@ describe('REST API Defect Fixes', () => {
       expect(res.status).toBe(201);
       expect(res.body.priority).toBe(0);
     });
+
+    test('rejects NaN with 400', async () => {
+      const res = await request(ctx.app)
+        .post('/api/v1/tasks')
+        .send({ title: 'test', priority: NaN });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('finite');
+    });
+
+    test('rejects Infinity with 400', async () => {
+      const res = await request(ctx.app)
+        .post('/api/v1/tasks')
+        .send({ title: 'test', priority: Infinity });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('finite');
+    });
   });
 
   // ─── DEFECT-2 (#374): Timestamps in ISO 8601 format ───────

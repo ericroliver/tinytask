@@ -17,6 +17,7 @@ import {
   Link,
   LinkData,
 } from '../types/index.js';
+import { toISO8601 } from '../utils/timestamp.js';
 
 export class TaskService {
   constructor(private db: DatabaseClient) {}
@@ -134,12 +135,12 @@ export class TaskService {
       ...parsedTask,
       comments: comments.map(c => ({
         ...c,
-        created_at: this.toISO8601(c.created_at),
-        updated_at: this.toISO8601(c.updated_at),
+        created_at: toISO8601(c.created_at),
+        updated_at: toISO8601(c.updated_at),
       })),
       links: links.map(l => ({
         ...l,
-        created_at: this.toISO8601(l.created_at),
+        created_at: toISO8601(l.created_at),
       })),
     };
   }
@@ -538,8 +539,8 @@ export class TaskService {
         task: updatedTask,
         comment: {
           ...newComment,
-          created_at: this.toISO8601(newComment.created_at),
-          updated_at: this.toISO8601(newComment.updated_at),
+          created_at: toISO8601(newComment.created_at),
+          updated_at: toISO8601(newComment.updated_at),
         },
       };
     });
@@ -705,23 +706,10 @@ export class TaskService {
       ...task,
       tags: task.tags ? JSON.parse(task.tags as string) : [],
       is_currently_blocked: this.isCurrentlyBlocked(task),
-      created_at: this.toISO8601(task.created_at),
-      updated_at: this.toISO8601(task.updated_at),
-      archived_at: task.archived_at ? this.toISO8601(task.archived_at) : null,
+      created_at: toISO8601(task.created_at),
+      updated_at: toISO8601(task.updated_at),
+      archived_at: task.archived_at ? toISO8601(task.archived_at) : null,
     };
-  }
-
-  /**
-   * Convert SQLite timestamp (YYYY-MM-DD HH:MM:SS) to ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ)
-   * If the timestamp is already in ISO 8601 format, return as-is.
-   */
-  private toISO8601(timestamp: string): string {
-    // Already ISO 8601 (has T separator)
-    if (timestamp.includes('T')) {
-      return timestamp;
-    }
-    // SQLite format: YYYY-MM-DD HH:MM:SS → YYYY-MM-DDTHH:MM:SSZ
-    return timestamp.replace(' ', 'T') + 'Z';
   }
 
   /**

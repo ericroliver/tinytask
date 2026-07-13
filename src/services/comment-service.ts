@@ -4,19 +4,10 @@
 
 import { DatabaseClient } from '../db/client.js';
 import { Comment, CreateCommentParams, CommentData } from '../types/index.js';
+import { toISO8601 } from '../utils/timestamp.js';
 
 export class CommentService {
   constructor(private db: DatabaseClient) {}
-
-  /**
-   * Convert SQLite timestamp (YYYY-MM-DD HH:MM:SS) to ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ)
-   */
-  private toISO8601(timestamp: string): string {
-    if (timestamp.includes('T')) {
-      return timestamp;
-    }
-    return timestamp.replace(' ', 'T') + 'Z';
-  }
 
   /**
    * Parse comment from database row (convert timestamps to ISO 8601)
@@ -24,8 +15,8 @@ export class CommentService {
   private parseComment(comment: Comment): CommentData {
     return {
       ...comment,
-      created_at: this.toISO8601(comment.created_at),
-      updated_at: this.toISO8601(comment.updated_at),
+      created_at: toISO8601(comment.created_at),
+      updated_at: toISO8601(comment.updated_at),
     };
   }
 

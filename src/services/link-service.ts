@@ -4,19 +4,10 @@
 
 import { DatabaseClient } from '../db/client.js';
 import { Link, CreateLinkParams, UpdateLinkParams, LinkData } from '../types/index.js';
+import { toISO8601 } from '../utils/timestamp.js';
 
 export class LinkService {
   constructor(private db: DatabaseClient) {}
-
-  /**
-   * Convert SQLite timestamp (YYYY-MM-DD HH:MM:SS) to ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ)
-   */
-  private toISO8601(timestamp: string): string {
-    if (timestamp.includes('T')) {
-      return timestamp;
-    }
-    return timestamp.replace(' ', 'T') + 'Z';
-  }
 
   /**
    * Parse link from database row (convert timestamps to ISO 8601)
@@ -24,7 +15,7 @@ export class LinkService {
   private parseLink(link: Link): LinkData {
     return {
       ...link,
-      created_at: this.toISO8601(link.created_at),
+      created_at: toISO8601(link.created_at),
     };
   }
 
