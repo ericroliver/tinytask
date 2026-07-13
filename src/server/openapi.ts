@@ -45,14 +45,10 @@ function zodToJsonSchema(schema: z.ZodTypeAny): JsonSchema {
     return zodToJsonSchema(schema._def.innerType);
   }
 
-  // ZodNullable
+  // ZodNullable — OpenAPI 3.0 uses `nullable: true` rather than JSON Schema union types
   if (schema instanceof z.ZodNullable) {
     const inner = zodToJsonSchema(schema._def.innerType);
-    // Merge types to allow null
-    if (typeof inner.type === 'string') {
-      return { ...inner, type: [inner.type, 'null'] };
-    }
-    return inner;
+    return { ...inner, nullable: true };
   }
 
   // ZodDefault
@@ -473,7 +469,7 @@ function buildPaths(): Record<string, Record<string, JsonSchema>> {
           })
         ),
         responses: {
-          '200': jsonResponse('TaskTransferResponse'),
+          '200': jsonResponse('TaskWithRelations'),
           '400': errorResponse(),
           '404': errorResponse('Task not found'),
         },

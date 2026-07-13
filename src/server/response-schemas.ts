@@ -91,10 +91,9 @@ export const ClearedQueueResponseSchema = z.object({
   tasks_removed: z.number().describe('Number of tasks removed from the queue'),
 });
 
-export const TaskTransferResponseSchema = z.object({
-  task: ParsedTaskSchema.describe('The transferred task'),
-  comment: CommentDataSchema.describe('Handoff comment that was added'),
-});
+export const TaskTransferResponseSchema = TaskWithRelationsSchema.describe(
+  'The transferred task with its updated comments and links (including the handoff comment)'
+);
 
 export const ErrorResponseSchema = z.object({
   error: z.string().describe('Error message'),

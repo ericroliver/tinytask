@@ -211,13 +211,26 @@ export function createRestRouter(
   router.patch('/tasks/:id/parent', (req: Request, res: Response) => {
     try {
       const subtaskId = parseInt(req.params.id, 10);
-      const newParentId = req.body.new_parent_id !== undefined
-        ? (req.body.new_parent_id === null ? null : parseInt(req.body.new_parent_id, 10))
-        : undefined;
-      const result = taskService.moveSubtask(
-        subtaskId,
-        newParentId === undefined ? null : newParentId
-      );
+      if (isNaN(subtaskId)) {
+        res.status(400).json({ error: 'Invalid task ID' });
+        return;
+      }
+
+      // If new_parent_id is omitted, return 400 — it's a required field
+      if (req.body.new_parent_id === undefined) {
+        res.status(400).json({ error: 'new_parent_id is required (use null to make top-level)' });
+        return;
+      }
+
+      const newParentId = req.body.new_parent_id === null
+        ? null
+        : parseInt(req.body.new_parent_id, 10);
+      if (newParentId !== null && isNaN(newParentId)) {
+        res.status(400).json({ error: 'Invalid new_parent_id' });
+        return;
+      }
+
+      const result = taskService.moveSubtask(subtaskId, newParentId);
       res.json(result);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -364,7 +377,18 @@ export function createRestRouter(
   router.patch('/tasks/:id/queue', (req: Request, res: Response) => {
     try {
       const taskId = parseInt(req.params.id, 10);
-      const task = queueService.moveTaskToQueue(taskId, req.body.new_queue_name);
+      if (isNaN(taskId)) {
+        res.status(400).json({ error: 'Invalid task ID' });
+        return;
+      }
+
+      const newQueueName = req.body?.new_queue_name;
+      if (typeof newQueueName !== 'string' || newQueueName.trim().length === 0) {
+        res.status(400).json({ error: 'new_queue_name is required and must be a non-empty string' });
+        return;
+      }
+
+      const task = queueService.moveTaskToQueue(taskId, newQueueName);
       res.json(task);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
