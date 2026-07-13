@@ -469,7 +469,7 @@ function buildPaths(): Record<string, Record<string, JsonSchema>> {
           })
         ),
         responses: {
-          '200': jsonResponse('TaskWithRelations'),
+          '200': jsonResponse('TaskTransferResponse'),
           '400': errorResponse(),
           '404': errorResponse('Task not found'),
         },

@@ -289,6 +289,19 @@ export class QueueService {
       ...task,
       tags: task.tags ? JSON.parse(task.tags as string) : [],
       is_currently_blocked: this.isCurrentlyBlocked(task),
+      created_at: this.toISO8601(task.created_at),
+      updated_at: this.toISO8601(task.updated_at),
+      archived_at: task.archived_at ? this.toISO8601(task.archived_at) : null,
     };
+  }
+
+  /**
+   * Convert SQLite timestamp (YYYY-MM-DD HH:MM:SS) to ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ)
+   */
+  private toISO8601(timestamp: string): string {
+    if (timestamp.includes('T')) {
+      return timestamp;
+    }
+    return timestamp.replace(' ', 'T') + 'Z';
   }
 }

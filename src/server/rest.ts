@@ -42,6 +42,12 @@ export function createRestRouter(
   // POST /api/v1/tasks — create_task
   router.post('/tasks', (req: Request, res: Response) => {
     try {
+      // Validate priority type if provided
+      if (req.body.priority !== undefined && typeof req.body.priority !== 'number') {
+        res.status(400).json({ error: 'priority must be a number' });
+        return;
+      }
+
       const task = taskService.create({
         title: req.body.title,
         description: req.body.description,
@@ -82,6 +88,10 @@ export function createRestRouter(
   router.get('/tasks/:id', (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        res.status(400).json({ error: `Invalid task ID: ${req.params.id}` });
+        return;
+      }
       const task = taskService.get(id, true);
       if (!task) {
         res.status(404).json({ error: `Task ${id} not found` });

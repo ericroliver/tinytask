@@ -130,8 +130,15 @@ export class TaskService {
 
     return {
       ...parsedTask,
-      comments,
-      links,
+      comments: comments.map(c => ({
+        ...c,
+        created_at: this.toISO8601(c.created_at),
+        updated_at: this.toISO8601(c.updated_at),
+      })),
+      links: links.map(l => ({
+        ...l,
+        created_at: this.toISO8601(l.created_at),
+      })),
     };
   }
 
@@ -339,6 +346,24 @@ export class TaskService {
       values.push(filters.status);
     }
 
+    if (filters.queue_name !== undefined) {
+      conditions.push('queue_name = ?');
+      values.push(filters.queue_name);
+    }
+
+    if (filters.parent_task_id !== undefined) {
+      if (filters.parent_task_id === null) {
+        conditions.push('parent_task_id IS NULL');
+      } else {
+        conditions.push('parent_task_id = ?');
+        values.push(filters.parent_task_id);
+      }
+    }
+
+    if (filters.exclude_subtasks) {
+      conditions.push('parent_task_id IS NULL');
+    }
+
     if (!filters.include_archived) {
       conditions.push('archived_at IS NULL');
     }
@@ -452,7 +477,7 @@ export class TaskService {
     currentAgent: string,
     newAgent: string,
     comment: string
-  ): TaskWithRelations {
+  ): { task: ParsedTask; comment: CommentData } {
     return this.db.transaction(() => {
       // Verify task and ownership
       const task = this.db.queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [taskId]);
@@ -487,18 +512,34 @@ export class TaskService {
       }
 
       // Add handoff comment
-      this.db.execute(
+      const commentResult = this.db.execute(
         'INSERT INTO comments (task_id, content, created_by) VALUES (?, ?, ?)',
         [taskId, comment.trim(), currentAgent]
       );
 
-      // Return updated task with relations
-      const updatedTask = this.get(taskId, true);
+      // Get the newly created comment
+      const newComment = this.db.queryOne<CommentData>(
+        'SELECT * FROM comments WHERE id = ?',
+        [commentResult.lastInsertRowid]
+      );
+      if (!newComment) {
+        throw new Error('Failed to retrieve created comment');
+      }
+
+      // Get the updated task (without relations)
+      const updatedTask = this.get(taskId);
       if (!updatedTask) {
         throw new Error('Failed to retrieve updated task');
       }
 
-      return updatedTask;
+      return {
+        task: this.parseTask(updatedTask as Task),
+        comment: {
+          ...newComment,
+          created_at: this.toISO8601(newComment.created_at),
+          updated_at: this.toISO8601(newComment.updated_at),
+        },
+      };
     });
   }
 
@@ -655,14 +696,30 @@ export class TaskService {
   }
 
   /**
-   * Parse task from database row (handle JSON tags and compute blocking state)
+   * Parse task from database row (handle JSON tags, compute blocking state, convert timestamps to ISO 8601)
    */
   private parseTask(task: Task): ParsedTask {
     return {
       ...task,
       tags: task.tags ? JSON.parse(task.tags as string) : [],
       is_currently_blocked: this.isCurrentlyBlocked(task),
+      created_at: this.toISO8601(task.created_at),
+      updated_at: this.toISO8601(task.updated_at),
+      archived_at: task.archived_at ? this.toISO8601(task.archived_at) : null,
     };
+  }
+
+  /**
+   * Convert SQLite timestamp (YYYY-MM-DD HH:MM:SS) to ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ)
+   * If the timestamp is already in ISO 8601 format, return as-is.
+   */
+  private toISO8601(timestamp: string): string {
+    // Already ISO 8601 (has T separator)
+    if (timestamp.includes('T')) {
+      return timestamp;
+    }
+    // SQLite format: YYYY-MM-DD HH:MM:SS → YYYY-MM-DDTHH:MM:SSZ
+    return timestamp.replace(' ', 'T') + 'Z';
   }
 
   /**

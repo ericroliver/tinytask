@@ -3,15 +3,35 @@
  */
 
 import { DatabaseClient } from '../db/client.js';
-import { Link, CreateLinkParams, UpdateLinkParams } from '../types/index.js';
+import { Link, CreateLinkParams, UpdateLinkParams, LinkData } from '../types/index.js';
 
 export class LinkService {
   constructor(private db: DatabaseClient) {}
 
   /**
+   * Convert SQLite timestamp (YYYY-MM-DD HH:MM:SS) to ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ)
+   */
+  private toISO8601(timestamp: string): string {
+    if (timestamp.includes('T')) {
+      return timestamp;
+    }
+    return timestamp.replace(' ', 'T') + 'Z';
+  }
+
+  /**
+   * Parse link from database row (convert timestamps to ISO 8601)
+   */
+  private parseLink(link: Link): LinkData {
+    return {
+      ...link,
+      created_at: this.toISO8601(link.created_at),
+    };
+  }
+
+  /**
    * Create a new link
    */
-  create(params: CreateLinkParams): Link {
+  create(params: CreateLinkParams): LinkData {
     // Use a transaction to ensure atomic execution and immediate lock release
     return this.db.transaction(() => {
       // Validate required fields
@@ -39,25 +59,26 @@ export class LinkService {
         throw new Error('Failed to retrieve created link');
       }
 
-      return link;
+      return this.parseLink(link);
     });
   }
 
   /**
    * Get link by ID
    */
-  get(id: number): Link | null {
-    return this.db.queryOne<Link>('SELECT * FROM links WHERE id = ?', [id]);
+  get(id: number): LinkData | null {
+    const link = this.db.queryOne<Link>('SELECT * FROM links WHERE id = ?', [id]);
+    return link ? this.parseLink(link) : null;
   }
 
   /**
    * Update link fields
    */
-  update(id: number, updates: UpdateLinkParams): Link {
+  update(id: number, updates: UpdateLinkParams): LinkData {
     // Use a transaction to ensure atomic execution and immediate lock release
     return this.db.transaction(() => {
       // Check if link exists
-      const existing = this.get(id);
+      const existing = this.db.queryOne<Link>('SELECT * FROM links WHERE id = ?', [id]);
       if (!existing) {
         throw new Error(`Link not found: ${id}`);
       }
@@ -81,19 +102,19 @@ export class LinkService {
 
       if (fields.length === 0) {
         // No actual changes
-        return existing;
+        return this.parseLink(existing);
       }
 
       values.push(id);
 
       this.db.execute(`UPDATE links SET ${fields.join(', ')} WHERE id = ?`, values);
 
-      const updated = this.get(id);
+      const updated = this.db.queryOne<Link>('SELECT * FROM links WHERE id = ?', [id]);
       if (!updated) {
         throw new Error('Failed to retrieve updated link');
       }
 
-      return updated;
+      return this.parseLink(updated);
     });
   }
 
@@ -111,9 +132,10 @@ export class LinkService {
   /**
    * List all links for a task
    */
-  listByTask(taskId: number): Link[] {
-    return this.db.query<Link>('SELECT * FROM links WHERE task_id = ? ORDER BY created_at ASC', [
+  listByTask(taskId: number): LinkData[] {
+    const links = this.db.query<Link>('SELECT * FROM links WHERE task_id = ? ORDER BY created_at ASC', [
       taskId,
     ]);
+    return links.map(l => this.parseLink(l));
   }
 }
