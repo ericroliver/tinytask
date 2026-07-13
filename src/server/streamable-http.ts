@@ -9,6 +9,8 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { Server as HttpServer } from 'http';
 import { logger } from '../utils/index.js';
 import { createMcpServer } from './mcp-server.js';
+import { createRestRouter } from './rest.js';
+import { generateOpenApiSpec } from './openapi.js';
 
 /**
  * Configuration options for Streamable HTTP server
@@ -42,7 +44,7 @@ export async function startStreamableHttpServer(
   // CORS support
   app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Mcp-Session-Id');
     if (req.method === 'OPTIONS') {
       res.sendStatus(200);
@@ -63,7 +65,15 @@ export async function startStreamableHttpServer(
     });
   });
 
-  // Unified MCP endpoint for Streamable HTTP - handles both POST and GET
+  // REST API adapter for Shogun test coverage
+  app.use('/api/v1', createRestRouter(taskService, commentService, linkService, queueService));
+
+  // OpenAPI specification endpoint
+  app.get('/openapi.json', (_req, res) => {
+    res.json(generateOpenApiSpec());
+  });
+
+  // Unified MCP endpoint
   app.use('/mcp', async (req, res) => {
     const startTime = Date.now();
 

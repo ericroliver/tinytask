@@ -1,0 +1,17 @@
+# Dev instance override - runs on port 3001 to avoid conflict with prod (3000)
+services:
+  tinytask-dev:
+    ports:
+      - "3001:3000"
+      - "9229:9229"
+    volumes:
+      - ./src:/app/src:ro
+      - /home/eo/config/tinytask/data-dev:/data
+      - /app/node_modules
+    environment:
+      TINYTASK_MODE: http
+      TINYTASK_PORT: 3000
+      TINYTASK_HOST: 0.0.0.0
+      TINYTASK_DB_PATH: /data/tinytask-dev.db
+      TINYTASK_LOG_LEVEL: debug
+      NODE_ENV: development
