@@ -149,3 +149,6 @@ data/
 # Single Executable Application build artifacts
 *.blob
 tinytask-cli/deploy-local.sh
+
+# Temporary PR files
+.pr-body.md

@@ -75,7 +75,9 @@ export function createRestRouter(
         limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
         offset: req.query.offset ? parseInt(req.query.offset as string, 10) : undefined,
         queue_name: req.query.queue_name as string | undefined,
-        parent_task_id: req.query.parent_task_id ? parseInt(req.query.parent_task_id as string, 10) : undefined,
+        parent_task_id: req.query.parent_task_id
+          ? parseInt(req.query.parent_task_id as string, 10) || undefined
+          : undefined,
         exclude_subtasks: req.query.exclude_subtasks === 'true',
       });
       res.json(tasks);
@@ -345,7 +347,9 @@ export function createRestRouter(
       const tasks = queueService.getQueueTasks(req.params.name, {
         assigned_to: req.query.assigned_to as string | undefined,
         status: req.query.status as 'idle' | 'working' | 'complete' | undefined,
-        parent_task_id: req.query.parent_task_id ? parseInt(req.query.parent_task_id as string, 10) : undefined,
+        parent_task_id: req.query.parent_task_id
+          ? parseInt(req.query.parent_task_id as string, 10) || undefined
+          : undefined,
         exclude_subtasks: req.query.exclude_subtasks === 'true',
         include_archived: req.query.include_archived === 'true',
         limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,

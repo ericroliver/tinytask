@@ -12,7 +12,9 @@ import {
   UpdateTaskParams,
   TaskFilters,
   TaskStatus,
+  Comment,
   CommentData,
+  Link,
   LinkData,
 } from '../types/index.js';
 
@@ -119,11 +121,11 @@ export class TaskService {
     }
 
     // Include comments and links
-    const comments = this.db.query<CommentData>(
+    const comments = this.db.query<Comment>(
       'SELECT * FROM comments WHERE task_id = ? ORDER BY created_at ASC',
       [id]
     );
-    const links = this.db.query<LinkData>(
+    const links = this.db.query<Link>(
       'SELECT * FROM links WHERE task_id = ? ORDER BY created_at ASC',
       [id]
     );
@@ -518,7 +520,7 @@ export class TaskService {
       );
 
       // Get the newly created comment
-      const newComment = this.db.queryOne<CommentData>(
+      const newComment = this.db.queryOne<Comment>(
         'SELECT * FROM comments WHERE id = ?',
         [commentResult.lastInsertRowid]
       );
@@ -526,14 +528,14 @@ export class TaskService {
         throw new Error('Failed to retrieve created comment');
       }
 
-      // Get the updated task (without relations)
+      // Get the updated task (without relations) — already parsed with ISO 8601 timestamps
       const updatedTask = this.get(taskId);
       if (!updatedTask) {
         throw new Error('Failed to retrieve updated task');
       }
 
       return {
-        task: this.parseTask(updatedTask as Task),
+        task: updatedTask,
         comment: {
           ...newComment,
           created_at: this.toISO8601(newComment.created_at),

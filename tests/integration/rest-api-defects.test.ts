@@ -203,6 +203,29 @@ describe('REST API Defect Fixes', () => {
       expect(res.body.comment.content).toBe('handoff message');
       expect(res.body.comment.created_by).toBe('agent-a');
     });
+
+    test('transfer works with task that has tags', async () => {
+      // Create a task with tags assigned to an agent
+      const createRes = await request(ctx.app)
+        .post('/api/v1/tasks')
+        .send({ title: 'transfer with tags', assigned_to: 'agent-a', tags: ['urgent', 'backend'] });
+
+      const taskId = createRes.body.id;
+
+      // Transfer the task
+      const res = await request(ctx.app)
+        .post(`/api/v1/tasks/${taskId}/transfer`)
+        .send({
+          current_agent: 'agent-a',
+          new_agent: 'agent-b',
+          comment: 'handoff with tags',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.task).toHaveProperty('tags');
+      expect(res.body.task.tags).toEqual(['urgent', 'backend']);
+      expect(res.body.comment.content).toBe('handoff with tags');
+    });
   });
 
   // ─── DEFECT-5 (#377): Queue patch wrong field name ────────
