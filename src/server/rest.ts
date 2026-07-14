@@ -304,6 +304,10 @@ export function createRestRouter(
   router.delete('/tasks/:id', (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        res.status(400).json({ error: `Invalid task ID: ${req.params.id}` });
+        return;
+      }
       taskService.delete(id);
       res.json({ success: true, id });
     } catch (e) {
@@ -320,6 +324,10 @@ export function createRestRouter(
   router.post('/tasks/:id/archive', (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        res.status(400).json({ error: `Invalid task ID: ${req.params.id}` });
+        return;
+      }
       const task = taskService.archive(id);
       res.json(task);
     } catch (e) {
@@ -343,13 +351,10 @@ export function createRestRouter(
         return;
       }
 
-      // Validate body field types
-      if (req.body.title !== undefined && !isString(req.body.title)) {
-        res.status(400).json({ error: 'title must be a string' });
-        return;
-      }
-      if (req.body.title === undefined || (isString(req.body.title) && req.body.title.trim().length === 0)) {
-        res.status(400).json({ error: 'Task title is required' });
+      // Validate body field types (same validation as POST /tasks)
+      const validationError = validateTaskBodyFields(req.body, false);
+      if (validationError) {
+        res.status(400).json({ error: validationError });
         return;
       }
 
@@ -738,6 +743,10 @@ export function createRestRouter(
   router.delete('/comments/:id', (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        res.status(400).json({ error: `Invalid comment ID: ${req.params.id}` });
+        return;
+      }
       commentService.delete(id);
       res.json({ success: true, id });
     } catch (e) {
@@ -838,6 +847,10 @@ export function createRestRouter(
   router.delete('/links/:id', (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        res.status(400).json({ error: `Invalid link ID: ${req.params.id}` });
+        return;
+      }
       linkService.delete(id);
       res.json({ success: true, id });
     } catch (e) {
