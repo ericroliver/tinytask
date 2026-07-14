@@ -227,7 +227,8 @@ export class QueueService {
     }
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
-    const limitClause = filters.limit ? `LIMIT ${filters.limit}` : '';
+    // SQLite requires LIMIT before OFFSET. Use LIMIT -1 to mean "no limit" when only offset is provided.
+    const limitClause = filters.limit ? `LIMIT ${filters.limit}` : (filters.offset ? 'LIMIT -1' : '');
     const offsetClause = filters.offset ? `OFFSET ${filters.offset}` : '';
 
     const sql = `
