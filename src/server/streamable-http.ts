@@ -41,6 +41,15 @@ export async function startStreamableHttpServer(
   // Middleware
   app.use(express.json());
 
+  // Handle malformed JSON errors with 400 instead of 500
+  app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err instanceof SyntaxError && 'status' in err && err.status === 400 && 'body' in err) {
+      res.status(400).json({ error: 'Invalid JSON body' });
+      return;
+    }
+    next(err);
+  });
+
   // CORS support
   app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
