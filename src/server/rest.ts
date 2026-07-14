@@ -538,10 +538,13 @@ export function createRestRouter(
   // POST /api/v1/queues/:name/tasks — add_task_to_queue
   router.post('/queues/:name/tasks', (req: Request, res: Response) => {
     try {
-      const task = queueService.addTaskToQueue(
-        parseInt(req.body.task_id, 10),
-        req.params.name
-      );
+      const taskId = parseInt(req.body?.task_id, 10);
+      if (isNaN(taskId)) {
+        res.status(400).json({ error: 'task_id is required and must be a number' });
+        return;
+      }
+
+      const task = queueService.addTaskToQueue(taskId, req.params.name);
       res.json(task);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -630,6 +633,11 @@ export function createRestRouter(
   router.delete('/tasks/:id/queue', (req: Request, res: Response) => {
     try {
       const taskId = parseInt(req.params.id, 10);
+      if (isNaN(taskId)) {
+        res.status(400).json({ error: 'Invalid task ID' });
+        return;
+      }
+
       const task = queueService.removeTaskFromQueue(taskId);
       res.json(task);
     } catch (e) {
