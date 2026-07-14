@@ -15,6 +15,119 @@ import { LinkService } from '../services/link-service.js';
 import { QueueService } from '../services/queue-service.js';
 import { logger } from '../utils/index.js';
 
+// ─── Validation Helpers ───────────────────────────────────
+
+const VALID_STATUSES = ['idle', 'working', 'complete'] as const;
+
+/**
+ * Validate that a value is an integer (rejecting booleans, null, NaN, Infinity, floats).
+ * Returns true only for finite integer numbers.
+ */
+function isValidInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value);
+}
+
+/**
+ * Validate that a value is a string (rejecting numbers, booleans, objects, arrays, null).
+ */
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+/**
+ * Validate that a value is an array of strings.
+ */
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(v => typeof v === 'string');
+}
+
+/**
+ * Parse and validate a query param as a positive integer.
+ * Returns { value, error } - if error is set, value is undefined.
+ */
+function parseQueryInt(param: string | undefined, fieldName: string): { value: number | undefined; error?: string } {
+  if (param === undefined) return { value: undefined };
+  const parsed = Number(param);
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 0) {
+    return { value: undefined, error: `${fieldName} must be a non-negative integer` };
+  }
+  return { value: parsed };
+}
+
+/**
+ * Parse and validate a query param as a boolean ('true' or 'false').
+ * Returns { value, error } - if error is set, value is undefined.
+ */
+function parseQueryBool(param: string | undefined, fieldName: string): { value: boolean | undefined; error?: string } {
+  if (param === undefined) return { value: undefined };
+  if (param === 'true') return { value: true };
+  if (param === 'false') return { value: false };
+  return { value: undefined, error: `${fieldName} must be 'true' or 'false'` };
+}
+
+/**
+ * Parse and validate a query param as a status string.
+ */
+function parseQueryStatus(param: string | undefined): { value: 'idle' | 'working' | 'complete' | undefined; error?: string } {
+  if (param === undefined) return { value: undefined };
+  if (!VALID_STATUSES.includes(param as typeof VALID_STATUSES[number])) {
+    return { value: undefined, error: `status must be one of: ${VALID_STATUSES.join(', ')}` };
+  }
+  return { value: param as 'idle' | 'working' | 'complete' };
+}
+
+/**
+ * Validate the body of POST /tasks and PATCH /tasks/:id for type-correctness.
+ * Returns an error string if validation fails, or undefined if valid.
+ */
+function validateTaskBodyFields(body: Record<string, unknown>, isPatch: boolean): string | undefined {
+  // title: must be a string if present
+  if (body.title !== undefined) {
+    if (!isString(body.title)) return 'title must be a string';
+    if (body.title.trim().length === 0) return 'Task title is required';
+  } else if (!isPatch) {
+    return 'Task title is required';
+  }
+
+  // priority: must be a finite integer if provided (reject null, bool, string, float, NaN, Infinity)
+  if (body.priority !== undefined) {
+    if (body.priority === null || !isValidInteger(body.priority)) {
+      return 'priority must be a finite integer';
+    }
+  }
+
+  // tags: must be an array of strings if provided
+  if (body.tags !== undefined && body.tags !== null) {
+    if (!isStringArray(body.tags)) {
+      return 'tags must be an array of strings';
+    }
+  }
+
+  // status: must be valid if provided
+  if (body.status !== undefined) {
+    if (typeof body.status !== 'string' || !VALID_STATUSES.includes(body.status as typeof VALID_STATUSES[number])) {
+      return `Invalid status: ${body.status}. Must be one of: ${VALID_STATUSES.join(', ')}`;
+    }
+  }
+
+  // description: must be a string if provided
+  if (body.description !== undefined && body.description !== null && !isString(body.description)) {
+    return 'description must be a string';
+  }
+
+  // assigned_to: must be a string if provided
+  if (body.assigned_to !== undefined && body.assigned_to !== null && !isString(body.assigned_to)) {
+    return 'assigned_to must be a string';
+  }
+
+  // created_by: must be a string if provided
+  if (body.created_by !== undefined && body.created_by !== null && !isString(body.created_by)) {
+    return 'created_by must be a string';
+  }
+
+  return undefined;
+}
+
 /**
  * Create the REST API router with all endpoints.
  */
@@ -42,12 +155,10 @@ export function createRestRouter(
   // POST /api/v1/tasks — create_task
   router.post('/tasks', (req: Request, res: Response) => {
     try {
-      // Validate priority: must be a finite number if provided
-      if (
-        req.body.priority !== undefined &&
-        (typeof req.body.priority !== 'number' || !Number.isFinite(req.body.priority))
-      ) {
-        res.status(400).json({ error: 'priority must be a finite number' });
+      // Validate body field types
+      const validationError = validateTaskBodyFields(req.body, false);
+      if (validationError) {
+        res.status(400).json({ error: validationError });
         return;
       }
 
@@ -71,19 +182,60 @@ export function createRestRouter(
   // GET /api/v1/tasks — list_tasks
   router.get('/tasks', (req: Request, res: Response) => {
     try {
+      // Validate query parameters
+      const statusResult = parseQueryStatus(req.query.status as string | undefined);
+      if (statusResult.error) {
+        res.status(400).json({ error: statusResult.error });
+        return;
+      }
+
+      const limitResult = parseQueryInt(req.query.limit as string | undefined, 'limit');
+      if (limitResult.error) {
+        res.status(400).json({ error: limitResult.error });
+        return;
+      }
+
+      const offsetResult = parseQueryInt(req.query.offset as string | undefined, 'offset');
+      if (offsetResult.error) {
+        res.status(400).json({ error: offsetResult.error });
+        return;
+      }
+
+      const includeArchivedResult = parseQueryBool(req.query.include_archived as string | undefined, 'include_archived');
+      if (includeArchivedResult.error) {
+        res.status(400).json({ error: includeArchivedResult.error });
+        return;
+      }
+
+      const excludeSubtasksResult = parseQueryBool(req.query.exclude_subtasks as string | undefined, 'exclude_subtasks');
+      if (excludeSubtasksResult.error) {
+        res.status(400).json({ error: excludeSubtasksResult.error });
+        return;
+      }
+
+      let parentTaskId: number | undefined | null = undefined;
+      if (req.query.parent_task_id !== undefined) {
+        if (req.query.parent_task_id === 'null') {
+          parentTaskId = null;
+        } else {
+          const parsed = parseInt(req.query.parent_task_id as string, 10);
+          if (isNaN(parsed)) {
+            res.status(400).json({ error: 'parent_task_id must be an integer or null' });
+            return;
+          }
+          parentTaskId = parsed;
+        }
+      }
+
       const tasks = taskService.list({
         assigned_to: req.query.assigned_to as string | undefined,
-        status: req.query.status as 'idle' | 'working' | 'complete' | undefined,
-        include_archived: req.query.include_archived === 'true',
-        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
-        offset: req.query.offset ? parseInt(req.query.offset as string, 10) : undefined,
+        status: statusResult.value,
+        include_archived: includeArchivedResult.value ?? false,
+        limit: limitResult.value,
+        offset: offsetResult.value,
         queue_name: req.query.queue_name as string | undefined,
-        parent_task_id: (() => {
-          if (!req.query.parent_task_id) return undefined;
-          const parsed = parseInt(req.query.parent_task_id as string, 10);
-          return Number.isNaN(parsed) ? undefined : parsed;
-        })(),
-        exclude_subtasks: req.query.exclude_subtasks === 'true',
+        parent_task_id: parentTaskId,
+        exclude_subtasks: excludeSubtasksResult.value ?? false,
       });
       res.json(tasks);
     } catch (e) {
@@ -114,6 +266,18 @@ export function createRestRouter(
   router.patch('/tasks/:id', (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        res.status(400).json({ error: `Invalid task ID: ${req.params.id}` });
+        return;
+      }
+
+      // Validate body field types (partial validation for PATCH)
+      const validationError = validateTaskBodyFields(req.body, true);
+      if (validationError) {
+        res.status(400).json({ error: validationError });
+        return;
+      }
+
       const task = taskService.update(id, {
         title: req.body.title,
         description: req.body.description,
@@ -174,6 +338,21 @@ export function createRestRouter(
   router.post('/tasks/:parentId/subtasks', (req: Request, res: Response) => {
     try {
       const parentTaskId = parseInt(req.params.parentId, 10);
+      if (isNaN(parentTaskId)) {
+        res.status(400).json({ error: `Invalid parent task ID: ${req.params.parentId}` });
+        return;
+      }
+
+      // Validate body field types
+      if (req.body.title !== undefined && !isString(req.body.title)) {
+        res.status(400).json({ error: 'title must be a string' });
+        return;
+      }
+      if (req.body.title === undefined || (isString(req.body.title) && req.body.title.trim().length === 0)) {
+        res.status(400).json({ error: 'Task title is required' });
+        return;
+      }
+
       const task = taskService.createSubtask(parentTaskId, {
         title: req.body.title,
         description: req.body.description,
@@ -289,6 +468,29 @@ export function createRestRouter(
   router.post('/tasks/:id/transfer', (req: Request, res: Response) => {
     try {
       const taskId = parseInt(req.params.id, 10);
+      if (isNaN(taskId)) {
+        res.status(400).json({ error: `Invalid task ID: ${req.params.id}` });
+        return;
+      }
+
+      // Validate required fields
+      if (!req.body || typeof req.body !== 'object') {
+        res.status(400).json({ error: 'Request body is required' });
+        return;
+      }
+      if (!isString(req.body.current_agent) || req.body.current_agent.trim().length === 0) {
+        res.status(400).json({ error: 'current_agent is required and must be a non-empty string' });
+        return;
+      }
+      if (!isString(req.body.new_agent) || req.body.new_agent.trim().length === 0) {
+        res.status(400).json({ error: 'new_agent is required and must be a non-empty string' });
+        return;
+      }
+      if (!isString(req.body.comment) || req.body.comment.trim().length === 0) {
+        res.status(400).json({ error: 'comment is required and must be a non-empty string' });
+        return;
+      }
+
       const result = taskService.moveTask(
         taskId,
         req.body.current_agent,
@@ -349,18 +551,59 @@ export function createRestRouter(
   // GET /api/v1/queues/:name/tasks — get_queue_tasks
   router.get('/queues/:name/tasks', (req: Request, res: Response) => {
     try {
+      // Validate query parameters
+      const statusResult = parseQueryStatus(req.query.status as string | undefined);
+      if (statusResult.error) {
+        res.status(400).json({ error: statusResult.error });
+        return;
+      }
+
+      const limitResult = parseQueryInt(req.query.limit as string | undefined, 'limit');
+      if (limitResult.error) {
+        res.status(400).json({ error: limitResult.error });
+        return;
+      }
+
+      const offsetResult = parseQueryInt(req.query.offset as string | undefined, 'offset');
+      if (offsetResult.error) {
+        res.status(400).json({ error: offsetResult.error });
+        return;
+      }
+
+      const includeArchivedResult = parseQueryBool(req.query.include_archived as string | undefined, 'include_archived');
+      if (includeArchivedResult.error) {
+        res.status(400).json({ error: includeArchivedResult.error });
+        return;
+      }
+
+      const excludeSubtasksResult = parseQueryBool(req.query.exclude_subtasks as string | undefined, 'exclude_subtasks');
+      if (excludeSubtasksResult.error) {
+        res.status(400).json({ error: excludeSubtasksResult.error });
+        return;
+      }
+
+      let parentTaskId: number | undefined | null = undefined;
+      if (req.query.parent_task_id !== undefined) {
+        if (req.query.parent_task_id === 'null') {
+          parentTaskId = null;
+        } else {
+          const parsed = parseInt(req.query.parent_task_id as string, 10);
+          if (isNaN(parsed)) {
+            res.status(400).json({ error: 'parent_task_id must be an integer or null' });
+            return;
+          }
+          parentTaskId = parsed;
+        }
+      }
+
       const tasks = queueService.getQueueTasks(req.params.name, {
         assigned_to: req.query.assigned_to as string | undefined,
-        status: req.query.status as 'idle' | 'working' | 'complete' | undefined,
-        parent_task_id: (() => {
-          if (!req.query.parent_task_id) return undefined;
-          const parsed = parseInt(req.query.parent_task_id as string, 10);
-          return Number.isNaN(parsed) ? undefined : parsed;
-        })(),
-        exclude_subtasks: req.query.exclude_subtasks === 'true',
-        include_archived: req.query.include_archived === 'true',
-        limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
-        offset: req.query.offset ? parseInt(req.query.offset as string, 10) : undefined,
+        status: statusResult.value,
+        parent_task_id: parentTaskId,
+        exclude_subtasks: excludeSubtasksResult.value ?? false,
+        include_archived: includeArchivedResult.value ?? false,
+        limit: limitResult.value,
+        offset: offsetResult.value,
       });
       res.json(tasks);
     } catch (e) {
@@ -426,8 +669,20 @@ export function createRestRouter(
   // POST /api/v1/tasks/:id/comments — add_comment
   router.post('/tasks/:id/comments', (req: Request, res: Response) => {
     try {
+      const taskId = parseInt(req.params.id, 10);
+      if (isNaN(taskId)) {
+        res.status(400).json({ error: `Invalid task ID: ${req.params.id}` });
+        return;
+      }
+
+      // Validate content is a string
+      if (!isString(req.body.content)) {
+        res.status(400).json({ error: 'content is required and must be a string' });
+        return;
+      }
+
       const comment = commentService.create({
-        task_id: parseInt(req.params.id, 10),
+        task_id: taskId,
         content: req.body.content,
         created_by: req.body.created_by,
       });
@@ -455,7 +710,19 @@ export function createRestRouter(
   // PATCH /api/v1/comments/:id — update_comment
   router.patch('/comments/:id', (req: Request, res: Response) => {
     try {
-      const comment = commentService.update(parseInt(req.params.id, 10), req.body.content);
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        res.status(400).json({ error: `Invalid comment ID: ${req.params.id}` });
+        return;
+      }
+
+      // Validate content is a string
+      if (!isString(req.body.content)) {
+        res.status(400).json({ error: 'content is required and must be a string' });
+        return;
+      }
+
+      const comment = commentService.update(id, req.body.content);
       res.json(comment);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -488,8 +755,25 @@ export function createRestRouter(
   // POST /api/v1/tasks/:id/links — add_link
   router.post('/tasks/:id/links', (req: Request, res: Response) => {
     try {
+      const taskId = parseInt(req.params.id, 10);
+      if (isNaN(taskId)) {
+        res.status(400).json({ error: `Invalid task ID: ${req.params.id}` });
+        return;
+      }
+
+      // Validate url is a string
+      if (!isString(req.body.url)) {
+        res.status(400).json({ error: 'url is required and must be a string' });
+        return;
+      }
+      // Validate description if provided
+      if (req.body.description !== undefined && req.body.description !== null && !isString(req.body.description)) {
+        res.status(400).json({ error: 'description must be a string' });
+        return;
+      }
+
       const link = linkService.create({
-        task_id: parseInt(req.params.id, 10),
+        task_id: taskId,
         url: req.body.url,
         description: req.body.description,
         created_by: req.body.created_by,
@@ -518,7 +802,24 @@ export function createRestRouter(
   // PATCH /api/v1/links/:id — update_link
   router.patch('/links/:id', (req: Request, res: Response) => {
     try {
-      const link = linkService.update(parseInt(req.params.id, 10), {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        res.status(400).json({ error: `Invalid link ID: ${req.params.id}` });
+        return;
+      }
+
+      // Validate url if provided
+      if (req.body.url !== undefined && !isString(req.body.url)) {
+        res.status(400).json({ error: 'url must be a string' });
+        return;
+      }
+      // Validate description if provided
+      if (req.body.description !== undefined && req.body.description !== null && !isString(req.body.description)) {
+        res.status(400).json({ error: 'description must be a string' });
+        return;
+      }
+
+      const link = linkService.update(id, {
         url: req.body.url,
         description: req.body.description,
       });
