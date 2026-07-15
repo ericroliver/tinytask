@@ -110,13 +110,9 @@ export async function getSubtasksHandler(
   try {
     const subtasks = taskService.getSubtasks(
       params.parent_task_id,
-      params.recursive || false
+      params.recursive || false,
+      params.include_archived || false
     );
-
-    // Filter archived if needed
-    const filtered = params.include_archived
-      ? subtasks
-      : subtasks.filter((t) => !t.archived_at);
 
     return {
       content: [
@@ -126,8 +122,8 @@ export async function getSubtasksHandler(
             {
               parent_task_id: params.parent_task_id,
               recursive: params.recursive || false,
-              count: filtered.length,
-              subtasks: filtered,
+              count: subtasks.length,
+              subtasks: subtasks,
             },
             null,
             2

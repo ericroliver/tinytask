@@ -260,4 +260,63 @@ describe('REST API Defect Fixes — Batch 3 (#509-#510, #548-#554)', () => {
       expect(res.body.tags).toEqual(['bug', 'urgent']);
     });
   });
+
+  // ─── DEFECT-16: include_archived on subtasks endpoint ──
+  describe('DEFECT-16: GET /tasks/:parentId/subtasks?include_archived=true', () => {
+    test('include_archived=true returns archived subtasks', async () => {
+      const parent = ctx.taskService.create({
+        title: 'Parent',
+        status: 'idle',
+      });
+      const child = ctx.taskService.createSubtask(parent.id, {
+        title: 'Active Child',
+        status: 'idle',
+      });
+      const archivedChild = ctx.taskService.createSubtask(parent.id, {
+        title: 'Archived Child',
+        status: 'idle',
+      });
+      ctx.taskService.archive(archivedChild.id);
+
+      // Without include_archived: should exclude archived
+      const res1 = await request(ctx.app).get(`/api/v1/tasks/${parent.id}/subtasks`);
+      expect(res1.status).toBe(200);
+      expect(res1.body).toHaveLength(1);
+      expect(res1.body[0].id).toBe(child.id);
+
+      // With include_archived=true: should include archived
+      const res2 = await request(ctx.app).get(`/api/v1/tasks/${parent.id}/subtasks?include_archived=true`);
+      expect(res2.status).toBe(200);
+      expect(res2.body).toHaveLength(2);
+      const ids = res2.body.map((t: any) => t.id);
+      expect(ids).toContain(child.id);
+      expect(ids).toContain(archivedChild.id);
+    });
+
+    test('include_archived=true works with recursive subtasks', async () => {
+      const parent = ctx.taskService.create({
+        title: 'Parent',
+        status: 'idle',
+      });
+      const child = ctx.taskService.createSubtask(parent.id, {
+        title: 'Child',
+        status: 'idle',
+      });
+      const grandchild = ctx.taskService.createSubtask(child.id, {
+        title: 'Grandchild',
+        status: 'idle',
+      });
+      const archivedGrandchild = ctx.taskService.createSubtask(child.id, {
+        title: 'Archived Grandchild',
+        status: 'idle',
+      });
+      ctx.taskService.archive(archivedGrandchild.id);
+
+      const res = await request(ctx.app).get(`/api/v1/tasks/${parent.id}/subtasks?recursive=true&include_archived=true`);
+      expect(res.status).toBe(200);
+      const ids = res.body.map((t: any) => t.id);
+      expect(ids).toContain(grandchild.id);
+      expect(ids).toContain(archivedGrandchild.id);
+    });
+  });
 });

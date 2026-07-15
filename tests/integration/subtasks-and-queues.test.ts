@@ -547,4 +547,80 @@ describe('Subtasks and Queues Integration', () => {
       expect(client.taskService.getTask(task.id)).toBeNull();
     });
   });
+
+  describe('Include Archived Subtasks', () => {
+    test('getSubtasks excludes archived subtasks by default', () => {
+      const parent = client.taskService.createTask({
+        title: 'Parent',
+        status: 'idle',
+      });
+      const child = client.taskService.createSubtask(parent.id, {
+        title: 'Active Child',
+        status: 'idle',
+      });
+      const archivedChild = client.taskService.createSubtask(parent.id, {
+        title: 'Archived Child',
+        status: 'idle',
+      });
+      client.taskService.archive(archivedChild.id);
+
+      const subtasks = client.taskService.getSubtasks(parent.id);
+      expect(subtasks).toHaveLength(1);
+      expect(subtasks[0].id).toBe(child.id);
+    });
+
+    test('getSubtasks includes archived subtasks when includeArchived=true', () => {
+      const parent = client.taskService.createTask({
+        title: 'Parent',
+        status: 'idle',
+      });
+      const child = client.taskService.createSubtask(parent.id, {
+        title: 'Active Child',
+        status: 'idle',
+      });
+      const archivedChild = client.taskService.createSubtask(parent.id, {
+        title: 'Archived Child',
+        status: 'idle',
+      });
+      client.taskService.archive(archivedChild.id);
+
+      const subtasks = client.taskService.getSubtasks(parent.id, false, true);
+      expect(subtasks).toHaveLength(2);
+      const ids = subtasks.map(t => t.id);
+      expect(ids).toContain(child.id);
+      expect(ids).toContain(archivedChild.id);
+    });
+
+    test('getSubtasks includes archived subtasks recursively when includeArchived=true', () => {
+      const parent = client.taskService.createTask({
+        title: 'Parent',
+        status: 'idle',
+      });
+      const child = client.taskService.createSubtask(parent.id, {
+        title: 'Active Child',
+        status: 'idle',
+      });
+      const grandchild = client.taskService.createSubtask(child.id, {
+        title: 'Active Grandchild',
+        status: 'idle',
+      });
+      const archivedGrandchild = client.taskService.createSubtask(child.id, {
+        title: 'Archived Grandchild',
+        status: 'idle',
+      });
+      client.taskService.archive(archivedGrandchild.id);
+
+      // Without includeArchived: should exclude archived
+      const subtasksExcluded = client.taskService.getSubtasks(parent.id, true);
+      const idsExcluded = subtasksExcluded.map(t => t.id);
+      expect(idsExcluded).toContain(grandchild.id);
+      expect(idsExcluded).not.toContain(archivedGrandchild.id);
+
+      // With includeArchived: should include archived
+      const subtasksIncluded = client.taskService.getSubtasks(parent.id, true, true);
+      const idsIncluded = subtasksIncluded.map(t => t.id);
+      expect(idsIncluded).toContain(grandchild.id);
+      expect(idsIncluded).toContain(archivedGrandchild.id);
+    });
+  });
 });

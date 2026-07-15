@@ -384,9 +384,8 @@ export function createRestRouter(
       const parentId = parseInt(req.params.parentId, 10);
       const recursive = req.query.recursive === 'true';
       const include_archived = req.query.include_archived === 'true';
-      const subtasks = taskService.getSubtasks(parentId, recursive);
-      const filtered = include_archived ? subtasks : subtasks.filter(t => !t.archived_at);
-      res.json(filtered);
+      const subtasks = taskService.getSubtasks(parentId, recursive, include_archived);
+      res.json(subtasks);
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : String(e) });
     }

@@ -550,13 +550,13 @@ export class TaskService {
   /**
    * Get subtasks for a parent task
    */
-  getSubtasks(parentId: number, recursive = false): ParsedTask[] {
+  getSubtasks(parentId: number, recursive = false, includeArchived = false): ParsedTask[] {
     if (!recursive) {
       // Get immediate children
       const tasks = this.db.query<Task>(
         `SELECT * FROM tasks
          WHERE parent_task_id = ?
-         AND archived_at IS NULL
+         ${includeArchived ? '' : 'AND archived_at IS NULL'}
          ORDER BY priority DESC, created_at ASC`,
         [parentId]
       );
@@ -574,7 +574,7 @@ export class TaskService {
            INNER JOIN subtask_tree st ON t.parent_task_id = st.id
          )
          SELECT * FROM subtask_tree
-         WHERE archived_at IS NULL
+         ${includeArchived ? '' : 'WHERE archived_at IS NULL'}
          ORDER BY priority DESC, created_at ASC`,
         [parentId]
       );
