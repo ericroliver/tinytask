@@ -12,7 +12,6 @@ export function createTaskCreateCommand(program: Command): void {
     .option('-a, --assigned-to <agent>', 'Assign to agent')
     .option('-c, --created-by <agent>', 'Created by agent')
     .option('-p, --priority <number>', 'Priority (default: 0)', parseInt)
-    .option('-s, --status <status>', 'Status (idle, working, complete)', 'idle')
     .option('-t, --tags <tags>', 'Comma-separated tags')
     .option('--parent <id>', 'Create as subtask under parent task ID', parseInt)
     .option('-q, --queue <name>', 'Assign to queue')
@@ -44,7 +43,6 @@ export function createTaskCreateCommand(program: Command): void {
           assigned_to: options.assignedTo || config.defaultAgent,
           created_by: options.createdBy,
           priority: options.priority,
-          status: options.status,
           tags,
           parent_task_id: options.parent,
           queue_name: options.queue,
