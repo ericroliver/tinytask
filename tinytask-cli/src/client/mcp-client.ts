@@ -9,7 +9,6 @@ export interface CreateTaskParams {
   created_by?: string;
   priority?: number;
   tags?: string[];
-  status?: 'idle' | 'working' | 'complete';
   parent_task_id?: number;
   queue_name?: string;
 }
