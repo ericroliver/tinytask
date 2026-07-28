@@ -15,19 +15,31 @@ import {
   Comment,
   CommentData,
   Link,
-  LinkData,
 } from '../types/index.js';
 import { toISO8601 } from '../utils/timestamp.js';
+import { EventBus } from '../events/event-bus.js';
+import { TaskEventType, createEvent } from '../events/event-types.js';
 
 export class TaskService {
-  constructor(private db: DatabaseClient) {}
+  constructor(
+    private db: DatabaseClient,
+    private eventBus?: EventBus
+  ) {}
+
+  /**
+   * Emit an event to the EventBus (no-op if EventBus not configured)
+   */
+  private emit(type: TaskEventType, payload: Record<string, unknown>): void {
+    if (!this.eventBus) return;
+    this.eventBus.emit(createEvent(type, payload));
+  }
 
   /**
    * Create a new task
    */
   create(params: CreateTaskParams): ParsedTask {
     // Use a transaction to ensure atomic execution and immediate lock release
-    return this.db.transaction(() => {
+    const task = this.db.transaction(() => {
       // Validate required fields
       if (!params.title || params.title.trim().length === 0) {
         throw new Error('Task title is required');
@@ -47,7 +59,7 @@ export class TaskService {
         }
         // Inherit queue_name from parent if not explicitly provided
         parentQueueName = parent.queue_name;
-        
+
         // Validate nesting depth (max 3 levels)
         const depth = this.getTaskDepth(params.parent_task_id);
         if (depth >= 3) {
@@ -103,6 +115,9 @@ export class TaskService {
 
       return parsedTask;
     });
+
+    this.emit(TaskEventType.TaskCreated, { taskId: task.id, task });
+    return task;
   }
 
   /**
@@ -133,12 +148,12 @@ export class TaskService {
 
     return {
       ...parsedTask,
-      comments: comments.map(c => ({
+      comments: comments.map((c) => ({
         ...c,
         created_at: toISO8601(c.created_at),
         updated_at: toISO8601(c.updated_at),
       })),
-      links: links.map(l => ({
+      links: links.map((l) => ({
         ...l,
         created_at: toISO8601(l.created_at),
       })),
@@ -149,9 +164,15 @@ export class TaskService {
    * Update task fields
    */
   update(id: number, updates: UpdateTaskParams): ParsedTask {
+    // Capture before state for events (read outside transaction — safe, just a SELECT)
+    const beforeTask = this.get(id);
+    if (!beforeTask) {
+      throw new Error(`Task not found: ${id}`);
+    }
+
     // Use a transaction to ensure atomic execution and immediate lock release
-    return this.db.transaction(() => {
-      // Check if task exists
+    const updated = this.db.transaction(() => {
+      // Re-check inside transaction for atomicity
       const existing = this.get(id);
       if (!existing) {
         throw new Error(`Task not found: ${id}`);
@@ -236,13 +257,13 @@ export class TaskService {
         // Check if assigned_to is actually changing
         const newAssignedTo = updates.assigned_to || null;
         const currentAssignedTo = existing.assigned_to;
-        
+
         if (newAssignedTo !== currentAssignedTo) {
           // Save current assigned_to to previous_assigned_to
           fields.push('previous_assigned_to = ?');
           values.push(currentAssignedTo);
         }
-        
+
         fields.push('assigned_to = ?');
         values.push(newAssignedTo);
       }
@@ -308,6 +329,51 @@ export class TaskService {
 
       return updated;
     });
+
+    // Emit events after transaction
+    if (this.eventBus) {
+      const before = beforeTask;
+
+      // Compute changed fields
+      const changedFields: string[] = [];
+      for (const key of Object.keys(updates) as string[]) {
+        const newVal = (updates as Record<string, unknown>)[key];
+        const oldVal = (before as unknown as Record<string, unknown>)[key];
+        if (newVal !== undefined && JSON.stringify(newVal) !== JSON.stringify(oldVal)) {
+          changedFields.push(key);
+        }
+      }
+
+      this.emit(TaskEventType.TaskUpdated, { taskId: id, before, after: updated, changedFields });
+
+      // Conditional events
+      if (updates.status !== undefined && updates.status !== before.status) {
+        this.emit(TaskEventType.TaskStatusChanged, {
+          taskId: id,
+          before: before.status,
+          after: updates.status,
+        });
+      }
+      if (
+        updates.assigned_to !== undefined &&
+        (updates.assigned_to || null) !== before.assigned_to
+      ) {
+        this.emit(TaskEventType.TaskAssigned, {
+          taskId: id,
+          before: before.assigned_to,
+          after: updates.assigned_to || null,
+        });
+      }
+      if (updates.queue_name !== undefined && updates.queue_name !== before.queue_name) {
+        this.emit(TaskEventType.TaskQueueChanged, {
+          taskId: id,
+          before: before.queue_name,
+          after: updates.queue_name,
+        });
+      }
+    }
+
+    return updated;
   }
 
   /**
@@ -330,6 +396,8 @@ export class TaskService {
         this.updateParentStatus(parentId);
       }
     });
+
+    this.emit(TaskEventType.TaskDeleted, { taskId: id });
   }
 
   /**
@@ -373,7 +441,7 @@ export class TaskService {
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     // SQLite requires LIMIT before OFFSET. Use LIMIT -1 to mean "no limit" when only offset is provided.
-    const limitClause = filters.limit ? `LIMIT ${filters.limit}` : (filters.offset ? 'LIMIT -1' : '');
+    const limitClause = filters.limit ? `LIMIT ${filters.limit}` : filters.offset ? 'LIMIT -1' : '';
     const offsetClause = filters.offset ? `OFFSET ${filters.offset}` : '';
 
     const sql = `
@@ -384,7 +452,7 @@ export class TaskService {
     `;
 
     const tasks = this.db.query<Task>(sql, values);
-    return tasks.map(task => this.parseTask(task));
+    return tasks.map((task) => this.parseTask(task));
   }
 
   /**
@@ -400,7 +468,7 @@ export class TaskService {
       [agentName]
     );
 
-    return tasks.map(task => this.parseTask(task));
+    return tasks.map((task) => this.parseTask(task));
   }
 
   /**
@@ -408,7 +476,7 @@ export class TaskService {
    */
   archive(id: number): ParsedTask {
     // Use a transaction to ensure atomic execution and immediate lock release
-    return this.db.transaction(() => {
+    const archived = this.db.transaction(() => {
       const existing = this.get(id);
       if (!existing) {
         throw new Error(`Task not found: ${id}`);
@@ -416,8 +484,8 @@ export class TaskService {
 
       this.db.execute('UPDATE tasks SET archived_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
 
-      const archived = this.get(id);
-      if (!archived) {
+      const archivedTask = this.get(id);
+      if (!archivedTask) {
         throw new Error('Failed to retrieve archived task');
       }
 
@@ -426,8 +494,11 @@ export class TaskService {
         this.updateParentStatus(existing.parent_task_id);
       }
 
-      return archived;
+      return archivedTask;
     });
+
+    this.emit(TaskEventType.TaskArchived, { taskId: id, task: archived });
+    return archived;
   }
 
   /**
@@ -435,7 +506,7 @@ export class TaskService {
    * Atomically marks the task as 'working' and returns it
    */
   signupForTask(agentName: string): TaskWithRelations | null {
-    return this.db.transaction(() => {
+    const result = this.db.transaction(() => {
       // Get first idle task from agent's queue
       const task = this.db.queryOne<Task>(
         `SELECT * FROM tasks
@@ -452,10 +523,10 @@ export class TaskService {
       }
 
       // Update task to working status
-      this.db.execute(
-        'UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        ['working', task.id]
-      );
+      this.db.execute('UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [
+        'working',
+        task.id,
+      ]);
 
       // Update parent status if task is a subtask
       if (task.parent_task_id != null) {
@@ -470,6 +541,17 @@ export class TaskService {
 
       return updatedTask;
     });
+
+    if (result) {
+      this.emit(TaskEventType.TaskSignedUp, { taskId: result.id, agent: agentName });
+      this.emit(TaskEventType.TaskStatusChanged, {
+        taskId: result.id,
+        before: 'idle' as TaskStatus,
+        after: 'working' as TaskStatus,
+      });
+    }
+
+    return result;
   }
 
   /**
@@ -482,10 +564,10 @@ export class TaskService {
     newAgent: string,
     comment: string
   ): { task: ParsedTask; comment: CommentData } {
-    return this.db.transaction(() => {
+    const result = this.db.transaction(() => {
       // Verify task and ownership
       const task = this.db.queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [taskId]);
-      
+
       if (!task) {
         throw new Error(`Task not found: ${taskId}`);
       }
@@ -522,10 +604,9 @@ export class TaskService {
       );
 
       // Get the newly created comment
-      const newComment = this.db.queryOne<Comment>(
-        'SELECT * FROM comments WHERE id = ?',
-        [commentResult.lastInsertRowid]
-      );
+      const newComment = this.db.queryOne<Comment>('SELECT * FROM comments WHERE id = ?', [
+        commentResult.lastInsertRowid,
+      ]);
       if (!newComment) {
         throw new Error('Failed to retrieve created comment');
       }
@@ -545,6 +626,19 @@ export class TaskService {
         },
       };
     });
+
+    this.emit(TaskEventType.TaskTransferred, {
+      taskId,
+      from: currentAgent,
+      to: newAgent,
+      comment: comment.trim(),
+    });
+    this.emit(TaskEventType.CommentAdded, {
+      taskId,
+      comment: result.comment,
+    });
+
+    return result;
   }
 
   /**
@@ -560,7 +654,7 @@ export class TaskService {
          ORDER BY priority DESC, created_at ASC`,
         [parentId]
       );
-      return tasks.map(task => this.parseTask(task));
+      return tasks.map((task) => this.parseTask(task));
     } else {
       // Get all descendants using recursive CTE
       const tasks = this.db.query<Task>(
@@ -578,7 +672,7 @@ export class TaskService {
          ORDER BY priority DESC, created_at ASC`,
         [parentId]
       );
-      return tasks.map(task => this.parseTask(task));
+      return tasks.map((task) => this.parseTask(task));
     }
   }
 
@@ -592,7 +686,7 @@ export class TaskService {
     }
 
     const subtasks = this.getSubtasks(taskId, recursive);
-    
+
     return {
       ...task,
       subtasks,
@@ -604,19 +698,33 @@ export class TaskService {
    * Create a subtask under a parent task
    */
   createSubtask(parentTaskId: number, taskData: CreateTaskParams): ParsedTask {
-    return this.create({
+    const task = this.create({
       ...taskData,
       parent_task_id: parentTaskId,
     });
+
+    this.emit(TaskEventType.SubtaskCreated, { taskId: task.id, parentId: parentTaskId, task });
+    return task;
   }
 
   /**
    * Move a subtask to a different parent or make it top-level
    */
   moveSubtask(subtaskId: number, newParentId: number | null): ParsedTask {
-    return this.update(subtaskId, {
+    // Capture old parent before update
+    const existing = this.get(subtaskId);
+    const oldParentId = existing?.parent_task_id ?? null;
+
+    const updated = this.update(subtaskId, {
       parent_task_id: newParentId,
     });
+
+    this.emit(TaskEventType.SubtaskMoved, {
+      taskId: subtaskId,
+      oldParentId,
+      newParentId,
+    });
+    return updated;
   }
 
   /**
@@ -629,7 +737,7 @@ export class TaskService {
       [blockingTaskId]
     );
 
-    return tasks.map(task => this.parseTask(task));
+    return tasks.map((task) => this.parseTask(task));
   }
 
   /**
@@ -649,7 +757,7 @@ export class TaskService {
 
     // Check if newParentId is a descendant of taskId
     const descendants = this.getSubtasks(taskId, true);
-    return descendants.some(t => t.id === newParentId);
+    return descendants.some((t) => t.id === newParentId);
   }
 
   /**
@@ -659,7 +767,8 @@ export class TaskService {
     let depth = 0;
     let currentId: number | null = taskId;
 
-    while (currentId !== null && depth < 10) { // Safety limit
+    while (currentId !== null && depth < 10) {
+      // Safety limit
       const task = this.get(currentId);
       if (!task) {
         break;
@@ -685,10 +794,9 @@ export class TaskService {
       return false;
     }
 
-    const blockingTask = this.db.queryOne<Task>(
-      'SELECT id, status FROM tasks WHERE id = ?',
-      [task.blocked_by_task_id]
-    );
+    const blockingTask = this.db.queryOne<Task>('SELECT id, status FROM tasks WHERE id = ?', [
+      task.blocked_by_task_id,
+    ]);
 
     if (!blockingTask) {
       // Blocking task doesn't exist (shouldn't happen with FK, but defensive)
@@ -736,10 +844,10 @@ export class TaskService {
 
     // Determine parent status based on children
     let newStatus: TaskStatus;
-    
-    const allComplete = children.every(child => child.status === 'complete');
-    const anyWorking = children.some(child => child.status === 'working');
-    
+
+    const allComplete = children.every((child) => child.status === 'complete');
+    const anyWorking = children.some((child) => child.status === 'working');
+
     if (allComplete) {
       newStatus = 'complete';
     } else if (anyWorking) {
@@ -750,23 +858,20 @@ export class TaskService {
     }
 
     // Update parent status if it changed
-    const parent = this.db.queryOne<Task>(
-      'SELECT id, status FROM tasks WHERE id = ?',
-      [parentId]
-    );
+    const parent = this.db.queryOne<Task>('SELECT id, status FROM tasks WHERE id = ?', [parentId]);
 
     if (parent && parent.status !== newStatus) {
-      this.db.execute(
-        'UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [newStatus, parentId]
-      );
+      this.db.execute('UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [
+        newStatus,
+        parentId,
+      ]);
 
       // Recursively update grandparent if exists
       const updatedParent = this.db.queryOne<Task>(
         'SELECT parent_task_id FROM tasks WHERE id = ?',
         [parentId]
       );
-      
+
       if (updatedParent?.parent_task_id != null) {
         this.updateParentStatus(updatedParent.parent_task_id);
       }

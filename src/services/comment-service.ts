@@ -5,9 +5,22 @@
 import { DatabaseClient } from '../db/client.js';
 import { Comment, CreateCommentParams, CommentData } from '../types/index.js';
 import { toISO8601 } from '../utils/timestamp.js';
+import { EventBus } from '../events/event-bus.js';
+import { TaskEventType, createEvent } from '../events/event-types.js';
 
 export class CommentService {
-  constructor(private db: DatabaseClient) {}
+  constructor(
+    private db: DatabaseClient,
+    private eventBus?: EventBus
+  ) {}
+
+  /**
+   * Emit an event to the EventBus (no-op if EventBus not configured)
+   */
+  private emit(type: TaskEventType, payload: Record<string, unknown>): void {
+    if (!this.eventBus) return;
+    this.eventBus.emit(createEvent(type, payload));
+  }
 
   /**
    * Parse comment from database row (convert timestamps to ISO 8601)
@@ -30,7 +43,7 @@ export class CommentService {
     }
 
     // Use a transaction to ensure atomic execution and immediate lock release
-    return this.db.transaction(() => {
+    const comment = this.db.transaction(() => {
       // Verify task exists
       const task = this.db.queryOne('SELECT id FROM tasks WHERE id = ?', [params.task_id]);
       if (!task) {
@@ -43,16 +56,19 @@ export class CommentService {
         [params.task_id, params.content.trim(), params.created_by || null]
       );
 
-      const comment = this.db.queryOne<Comment>('SELECT * FROM comments WHERE id = ?', [
+      const created = this.db.queryOne<Comment>('SELECT * FROM comments WHERE id = ?', [
         result.lastInsertRowid,
       ]);
 
-      if (!comment) {
+      if (!created) {
         throw new Error('Failed to retrieve created comment');
       }
 
-      return this.parseComment(comment);
+      return this.parseComment(created);
     });
+
+    this.emit(TaskEventType.CommentAdded, { taskId: params.task_id, comment });
+    return comment;
   }
 
   /**
@@ -67,8 +83,10 @@ export class CommentService {
    * Update comment content
    */
   update(id: number, content: string): CommentData {
+    let beforeContent = '';
+    let taskId = 0;
     // Use a transaction to ensure atomic execution and immediate lock release
-    return this.db.transaction(() => {
+    const updated = this.db.transaction(() => {
       // Validate content
       if (!content || content.trim().length === 0) {
         throw new Error('Comment content cannot be empty');
@@ -80,29 +98,48 @@ export class CommentService {
         throw new Error(`Comment not found: ${id}`);
       }
 
+      beforeContent = existing.content;
+      taskId = existing.task_id;
+
       this.db.execute(
         'UPDATE comments SET content = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
         [content.trim(), id]
       );
 
-      const updated = this.db.queryOne<Comment>('SELECT * FROM comments WHERE id = ?', [id]);
-      if (!updated) {
+      const updatedComment = this.db.queryOne<Comment>('SELECT * FROM comments WHERE id = ?', [id]);
+      if (!updatedComment) {
         throw new Error('Failed to retrieve updated comment');
       }
 
-      return this.parseComment(updated);
+      return this.parseComment(updatedComment);
     });
+
+    this.emit(TaskEventType.CommentUpdated, {
+      taskId,
+      commentId: id,
+      before: beforeContent,
+      after: content.trim(),
+    });
+    return updated;
   }
 
   /**
    * Delete comment permanently
    */
   delete(id: number): void {
+    // Capture task_id before deletion for event emission
+    const comment = this.db.queryOne<Comment>('SELECT task_id FROM comments WHERE id = ?', [id]);
+    if (!comment) {
+      throw new Error(`Comment not found: ${id}`);
+    }
+
     const result = this.db.execute('DELETE FROM comments WHERE id = ?', [id]);
 
     if (result.changes === 0) {
       throw new Error(`Comment not found: ${id}`);
     }
+
+    this.emit(TaskEventType.CommentDeleted, { taskId: comment.task_id, commentId: id });
   }
 
   /**
@@ -113,6 +150,6 @@ export class CommentService {
       'SELECT * FROM comments WHERE task_id = ? ORDER BY created_at ASC',
       [taskId]
     );
-    return comments.map(c => this.parseComment(c));
+    return comments.map((c) => this.parseComment(c));
   }
 }

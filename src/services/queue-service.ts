@@ -5,9 +5,22 @@
 import { DatabaseClient } from '../db/client.js';
 import { Task, ParsedTask, QueueStats, TaskFilters } from '../types/index.js';
 import { toISO8601 } from '../utils/timestamp.js';
+import { EventBus } from '../events/event-bus.js';
+import { TaskEventType, createEvent } from '../events/event-types.js';
 
 export class QueueService {
-  constructor(private db: DatabaseClient) {}
+  constructor(
+    private db: DatabaseClient,
+    private eventBus?: EventBus
+  ) {}
+
+  /**
+   * Emit an event to the EventBus (no-op if EventBus not configured)
+   */
+  private emit(type: TaskEventType, payload: Record<string, unknown>): void {
+    if (!this.eventBus) return;
+    this.eventBus.emit(createEvent(type, payload));
+  }
 
   /**
    * Get list of all unique queue names currently in use
@@ -21,7 +34,7 @@ export class QueueService {
        ORDER BY queue_name ASC`
     );
 
-    return rows.map(row => row.queue_name);
+    return rows.map((row) => row.queue_name);
   }
 
   /**
@@ -67,7 +80,7 @@ export class QueueService {
       [trimmedQueueName]
     );
 
-    const agents = agentRows.map(row => row.assigned_to);
+    const agents = agentRows.map((row) => row.assigned_to);
 
     // Return stats with proper defaults for non-existent queues
     return {
@@ -88,7 +101,7 @@ export class QueueService {
    * Add an existing task to a queue
    */
   addTaskToQueue(taskId: number, queueName: string): ParsedTask {
-    return this.db.transaction(() => {
+    const task = this.db.transaction(() => {
       // Validate queue name
       const trimmedQueueName = queueName.trim();
       if (trimmedQueueName.length === 0) {
@@ -100,8 +113,8 @@ export class QueueService {
       }
 
       // Verify task exists
-      const task = this.db.queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [taskId]);
-      if (!task) {
+      const taskRow = this.db.queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [taskId]);
+      if (!taskRow) {
         throw new Error(`Task not found: ${taskId}`);
       }
 
@@ -119,18 +132,23 @@ export class QueueService {
 
       return this.parseTask(updated);
     });
+
+    this.emit(TaskEventType.TaskAddedToQueue, { taskId, queueName: queueName.trim() });
+    return task;
   }
 
   /**
    * Remove task from its queue (set queue_name to null)
    */
   removeTaskFromQueue(taskId: number): ParsedTask {
-    return this.db.transaction(() => {
+    let oldQueueName: string | null = null;
+    const task = this.db.transaction(() => {
       // Verify task exists
-      const task = this.db.queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [taskId]);
-      if (!task) {
+      const taskRow = this.db.queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [taskId]);
+      if (!taskRow) {
         throw new Error(`Task not found: ${taskId}`);
       }
+      oldQueueName = taskRow.queue_name;
 
       // Update task queue to null
       this.db.execute(
@@ -146,13 +164,17 @@ export class QueueService {
 
       return this.parseTask(updated);
     });
+
+    this.emit(TaskEventType.TaskRemovedFromQueue, { taskId, queueName: oldQueueName });
+    return task;
   }
 
   /**
    * Move task from one queue to another
    */
   moveTaskToQueue(taskId: number, newQueueName: string): ParsedTask {
-    return this.db.transaction(() => {
+    let oldQueueName: string | null = null;
+    const task = this.db.transaction(() => {
       // Validate queue name
       const trimmedQueueName = newQueueName.trim();
       if (trimmedQueueName.length === 0) {
@@ -164,10 +186,11 @@ export class QueueService {
       }
 
       // Verify task exists
-      const task = this.db.queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [taskId]);
-      if (!task) {
+      const taskRow = this.db.queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [taskId]);
+      if (!taskRow) {
         throw new Error(`Task not found: ${taskId}`);
       }
+      oldQueueName = taskRow.queue_name;
 
       // Update task queue
       this.db.execute(
@@ -183,6 +206,13 @@ export class QueueService {
 
       return this.parseTask(updated);
     });
+
+    this.emit(TaskEventType.TaskQueueChanged, {
+      taskId,
+      before: oldQueueName,
+      after: newQueueName.trim(),
+    });
+    return task;
   }
 
   /**
@@ -228,7 +258,7 @@ export class QueueService {
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
     // SQLite requires LIMIT before OFFSET. Use LIMIT -1 to mean "no limit" when only offset is provided.
-    const limitClause = filters.limit ? `LIMIT ${filters.limit}` : (filters.offset ? 'LIMIT -1' : '');
+    const limitClause = filters.limit ? `LIMIT ${filters.limit}` : filters.offset ? 'LIMIT -1' : '';
     const offsetClause = filters.offset ? `OFFSET ${filters.offset}` : '';
 
     const sql = `
@@ -239,14 +269,14 @@ export class QueueService {
     `;
 
     const tasks = this.db.query<Task>(sql, values);
-    return tasks.map(task => this.parseTask(task));
+    return tasks.map((task) => this.parseTask(task));
   }
 
   /**
    * Remove all tasks from a queue (returns count of tasks cleared)
    */
   clearQueue(queueName: string): number {
-    return this.db.transaction(() => {
+    const count = this.db.transaction(() => {
       // Validate queue name
       const trimmedQueueName = queueName.trim();
       if (trimmedQueueName.length === 0) {
@@ -261,6 +291,9 @@ export class QueueService {
 
       return result.changes;
     });
+
+    this.emit(TaskEventType.QueueCleared, { queueName: queueName.trim(), count });
+    return count;
   }
 
   /**
@@ -271,10 +304,9 @@ export class QueueService {
       return false;
     }
 
-    const blockingTask = this.db.queryOne<Task>(
-      'SELECT id, status FROM tasks WHERE id = ?',
-      [task.blocked_by_task_id]
-    );
+    const blockingTask = this.db.queryOne<Task>('SELECT id, status FROM tasks WHERE id = ?', [
+      task.blocked_by_task_id,
+    ]);
 
     if (!blockingTask) {
       return false;
