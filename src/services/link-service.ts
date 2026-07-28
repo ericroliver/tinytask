@@ -5,9 +5,22 @@
 import { DatabaseClient } from '../db/client.js';
 import { Link, CreateLinkParams, UpdateLinkParams, LinkData } from '../types/index.js';
 import { toISO8601 } from '../utils/timestamp.js';
+import { EventBus } from '../events/event-bus.js';
+import { TaskEventType, createEvent } from '../events/event-types.js';
 
 export class LinkService {
-  constructor(private db: DatabaseClient) {}
+  constructor(
+    private db: DatabaseClient,
+    private eventBus?: EventBus
+  ) {}
+
+  /**
+   * Emit an event to the EventBus (no-op if EventBus not configured)
+   */
+  private emit(type: TaskEventType, payload: Record<string, unknown>): void {
+    if (!this.eventBus) return;
+    this.eventBus.emit(createEvent(type, payload));
+  }
 
   /**
    * Parse link from database row (convert timestamps to ISO 8601)
@@ -24,7 +37,7 @@ export class LinkService {
    */
   create(params: CreateLinkParams): LinkData {
     // Use a transaction to ensure atomic execution and immediate lock release
-    return this.db.transaction(() => {
+    const link = this.db.transaction(() => {
       // Validate required fields
       if (!params.url || params.url.trim().length === 0) {
         throw new Error('Link URL is required');
@@ -42,16 +55,19 @@ export class LinkService {
         [params.task_id, params.url.trim(), params.description || null, params.created_by || null]
       );
 
-      const link = this.db.queryOne<Link>('SELECT * FROM links WHERE id = ?', [
+      const created = this.db.queryOne<Link>('SELECT * FROM links WHERE id = ?', [
         result.lastInsertRowid,
       ]);
 
-      if (!link) {
+      if (!created) {
         throw new Error('Failed to retrieve created link');
       }
 
-      return this.parseLink(link);
+      return this.parseLink(created);
     });
+
+    this.emit(TaskEventType.LinkAdded, { taskId: params.task_id, link });
+    return link;
   }
 
   /**
@@ -66,9 +82,15 @@ export class LinkService {
    * Update link fields
    */
   update(id: number, updates: UpdateLinkParams): LinkData {
+    // Capture before state for events (read outside transaction — safe, just a SELECT)
+    const beforeLink = this.db.queryOne<Link>('SELECT * FROM links WHERE id = ?', [id]);
+    if (!beforeLink) {
+      throw new Error(`Link not found: ${id}`);
+    }
+
     // Use a transaction to ensure atomic execution and immediate lock release
-    return this.db.transaction(() => {
-      // Check if link exists
+    const updated = this.db.transaction(() => {
+      // Re-check inside transaction for atomicity
       const existing = this.db.queryOne<Link>('SELECT * FROM links WHERE id = ?', [id]);
       if (!existing) {
         throw new Error(`Link not found: ${id}`);
@@ -100,33 +122,56 @@ export class LinkService {
 
       this.db.execute(`UPDATE links SET ${fields.join(', ')} WHERE id = ?`, values);
 
-      const updated = this.db.queryOne<Link>('SELECT * FROM links WHERE id = ?', [id]);
-      if (!updated) {
+      const updatedLink = this.db.queryOne<Link>('SELECT * FROM links WHERE id = ?', [id]);
+      if (!updatedLink) {
         throw new Error('Failed to retrieve updated link');
       }
 
-      return this.parseLink(updated);
+      return this.parseLink(updatedLink);
     });
+
+    if (beforeLink) {
+      const hasUpdates = updates.url !== undefined || updates.description !== undefined;
+      if (hasUpdates) {
+        const before: Partial<LinkData> = this.parseLink(beforeLink);
+        this.emit(TaskEventType.LinkUpdated, {
+          taskId: beforeLink.task_id,
+          linkId: id,
+          before,
+          after: updated,
+        });
+      }
+    }
+    return updated;
   }
 
   /**
    * Delete link permanently
    */
   delete(id: number): void {
+    // Capture task_id before deletion for event emission
+    const link = this.db.queryOne<Link>('SELECT task_id FROM links WHERE id = ?', [id]);
+    if (!link) {
+      throw new Error(`Link not found: ${id}`);
+    }
+
     const result = this.db.execute('DELETE FROM links WHERE id = ?', [id]);
 
     if (result.changes === 0) {
       throw new Error(`Link not found: ${id}`);
     }
+
+    this.emit(TaskEventType.LinkDeleted, { taskId: link.task_id, linkId: id });
   }
 
   /**
    * List all links for a task
    */
   listByTask(taskId: number): LinkData[] {
-    const links = this.db.query<Link>('SELECT * FROM links WHERE task_id = ? ORDER BY created_at ASC', [
-      taskId,
-    ]);
-    return links.map(l => this.parseLink(l));
+    const links = this.db.query<Link>(
+      'SELECT * FROM links WHERE task_id = ? ORDER BY created_at ASC',
+      [taskId]
+    );
+    return links.map((l) => this.parseLink(l));
   }
 }

@@ -239,6 +239,11 @@ The project uses ESLint with TypeScript support. Key rules:
 - `TINYTASK_ENABLE_SSE`: Enable legacy SSE transport when `true` - default: `false`
 - `TINYTASK_PORT`: HTTP server port - default: `3000`
 - `TINYTASK_DB_PATH`: Path to SQLite database file - default: `./data/tinytask.db`
+- `TINYTASK_SIGNALR_HUB_URL`: SignalR hub URL for event broadcasting (e.g., `http://localhost:8080/messagehub`). If unset, broadcasting is disabled.
+- `TINYTASK_SIGNALR_GROUP`: Optional group name. If set, events are sent via `SendToGroup` instead of `BroadcastMessage`.
+- `TINYTASK_SIGNALR_LOG_LEVEL`: SignalR client log level (`Information`, `Warning`, or `Error`) - default: `Information`
+- `TINYTASK_SIGNALR_MAX_QUEUE`: Max buffered events when disconnected or rate-limited - default: `500`
+- `TINYTASK_SIGNALR_RECONNECT_DELAY`: Retry delay in ms for initial connection failure - default: `5000`
 
 ## MCP Protocol Considerations
 

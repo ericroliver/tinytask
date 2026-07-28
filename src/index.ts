@@ -12,6 +12,11 @@ import { createMcpServer } from './server/mcp-server.js';
 import { startStdioServer } from './server/stdio.js';
 import { startHttpServer } from './server/http.js';
 import { logger } from './utils/index.js';
+import { EventBus } from './events/event-bus.js';
+import type { SignalRBroadcaster } from './events/signalr-broadcaster.js';
+
+// Module-level reference for graceful shutdown
+let signalrBroadcaster: SignalRBroadcaster | null = null;
 
 /**
  * Main entry point for TinyTask MCP Server
@@ -27,7 +32,9 @@ async function main() {
 
     // Mode normalization - handle legacy 'sse' mode
     if (mode === 'sse') {
-      logger.warn('⚠️  TINYTASK_MODE=sse is deprecated. Use TINYTASK_MODE=http with TINYTASK_ENABLE_SSE=true');
+      logger.warn(
+        '⚠️  TINYTASK_MODE=sse is deprecated. Use TINYTASK_MODE=http with TINYTASK_ENABLE_SSE=true'
+      );
       mode = 'http';
       if (!process.env.TINYTASK_ENABLE_SSE) {
         process.env.TINYTASK_ENABLE_SSE = 'true';
@@ -48,6 +55,10 @@ async function main() {
     const enableSse = process.env.TINYTASK_ENABLE_SSE === 'true';
     const httpTransport = enableSse ? 'SSE (legacy)' : 'Streamable HTTP';
 
+    // SignalR config (for banner display — broadcaster created after DB init)
+    const signalrHubUrl = process.env.TINYTASK_SIGNALR_HUB_URL || '';
+    const signalrGroup = process.env.TINYTASK_SIGNALR_GROUP || '';
+
     // Print startup banner
     logger.info('='.repeat(50));
     logger.info('TinyTask MCP Server');
@@ -63,6 +74,14 @@ async function main() {
       logger.info(`Host: ${host}`);
       logger.info(`Port: ${port}`);
     }
+    if (signalrHubUrl) {
+      logger.info(`SignalR Hub: ${signalrHubUrl}`);
+      if (signalrGroup) {
+        logger.info(`SignalR Group: ${signalrGroup}`);
+      }
+    } else {
+      logger.info('SignalR: disabled');
+    }
     logger.info('='.repeat(50));
 
     // Test trace logging
@@ -74,12 +93,48 @@ async function main() {
     const db = initializeDatabase(dbPath);
     console.error('✓ Database initialized');
 
+    // Read remaining SignalR configuration
+    const signalrLogLevel = process.env.TINYTASK_SIGNALR_LOG_LEVEL || 'Information';
+    const parsedMaxQueue = Number.parseInt(process.env.TINYTASK_SIGNALR_MAX_QUEUE || '500', 10);
+    const signalrMaxQueue = Number.isFinite(parsedMaxQueue) ? parsedMaxQueue : 500;
+    const parsedReconnectDelay = Number.parseInt(
+      process.env.TINYTASK_SIGNALR_RECONNECT_DELAY || '5000',
+      10
+    );
+    const signalrReconnectDelay = Number.isFinite(parsedReconnectDelay)
+      ? parsedReconnectDelay
+      : 5000;
+
+    // Create EventBus (always — services emit to it, broadcaster subscribes if configured)
+    const eventBus = new EventBus();
+
+    // If SignalR hub URL is configured, create and start the broadcaster
+    if (signalrHubUrl) {
+      console.error('Starting SignalR broadcaster...');
+      const { SignalRBroadcaster } = await import('./events/signalr-broadcaster.js');
+      signalrBroadcaster = new SignalRBroadcaster({
+        hubUrl: signalrHubUrl,
+        group: signalrGroup || undefined,
+        logLevel: signalrLogLevel as 'Information' | 'Warning' | 'Error',
+        maxQueueSize: signalrMaxQueue,
+        reconnectDelay: signalrReconnectDelay,
+      });
+
+      // Subscribe broadcaster to all events
+      eventBus.on('*', (event) => signalrBroadcaster?.broadcast(event));
+
+      await signalrBroadcaster.start();
+      console.error('✓ SignalR broadcaster started');
+    } else {
+      console.error('SignalR broadcasting disabled (TINYTASK_SIGNALR_HUB_URL not set)');
+    }
+
     // Create services
     console.error('Creating services...');
-    const taskService = new TaskService(db);
-    const commentService = new CommentService(db);
-    const linkService = new LinkService(db);
-    const queueService = new QueueService(db);
+    const taskService = new TaskService(db, eventBus);
+    const commentService = new CommentService(db, eventBus);
+    const linkService = new LinkService(db, eventBus);
+    const queueService = new QueueService(db, eventBus);
     console.error('✓ Services created');
 
     // Create MCP server
@@ -125,13 +180,24 @@ async function main() {
  * Handle graceful shutdown
  */
 function setupShutdownHandlers() {
-  const shutdown = (signal: string) => {
+  const shutdown = async (signal: string) => {
     console.error(`\nReceived ${signal}, shutting down gracefully...`);
+
+    // Stop SignalR broadcaster if running
+    if (signalrBroadcaster) {
+      try {
+        await signalrBroadcaster.stop();
+        console.error('✓ SignalR broadcaster stopped');
+      } catch (error) {
+        console.error('SignalR broadcaster stop error:', error);
+      }
+    }
+
     process.exit(0);
   };
 
-  process.on('SIGINT', () => shutdown('SIGINT'));
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => void shutdown('SIGINT'));
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
 }
 
 /**

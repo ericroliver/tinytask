@@ -1,0 +1,482 @@
+/**
+ * Event Broadcasting Integration Tests
+ *
+ * Tests that all service mutations emit the correct events to the EventBus.
+ * No SignalR hub needed — testing the EventBus contract and service emission.
+ */
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { EventBus } from '../../src/events/event-bus.js';
+import { TaskEventType, createEvent } from '../../src/events/event-types.js';
+import type { HubMessage } from '../../src/events/event-types.js';
+import { TaskService } from '../../src/services/task-service.js';
+import { CommentService } from '../../src/services/comment-service.js';
+import { LinkService } from '../../src/services/link-service.js';
+import { QueueService } from '../../src/services/queue-service.js';
+import { DatabaseClient } from '../../src/db/client.js';
+import fs from 'fs';
+import path from 'path';
+
+/**
+ * Helper to create a test database + services wired to an EventBus
+ */
+function createTestSetup() {
+  const testDbPath = path.join(
+    process.cwd(),
+    'data',
+    `test-events-${Date.now()}-${Math.random()}.db`
+  );
+  const dataDir = path.dirname(testDbPath);
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+
+  const db = new DatabaseClient(testDbPath);
+  db.initialize();
+
+  const eventBus = new EventBus();
+  const taskService = new TaskService(db, eventBus);
+  const commentService = new CommentService(db, eventBus);
+  const linkService = new LinkService(db, eventBus);
+  const queueService = new QueueService(db, eventBus);
+
+  const events: HubMessage[] = [];
+  const unsub = eventBus.on('*', (event) => events.push(event));
+
+  const cleanup = () => {
+    unsub();
+    db.close();
+    if (fs.existsSync(testDbPath)) {
+      fs.unlinkSync(testDbPath);
+    }
+  };
+
+  return { db, eventBus, taskService, commentService, linkService, queueService, events, cleanup };
+}
+
+describe('Event Broadcasting', () => {
+  let setup: ReturnType<typeof createTestSetup>;
+
+  beforeEach(() => {
+    setup = createTestSetup();
+  });
+
+  afterEach(() => {
+    setup.cleanup();
+  });
+
+  // ─── Task lifecycle events ───
+
+  describe('Task lifecycle events', () => {
+    it('should emit task-created when a task is created', () => {
+      const task = setup.taskService.create({
+        title: 'Test Task',
+        description: 'Test description',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+        priority: 5,
+        tags: ['tag1', 'tag2'],
+      });
+
+      expect(setup.events).toHaveLength(1);
+      expect(setup.events[0].type).toBe(TaskEventType.TaskCreated);
+      expect(setup.events[0].payload.taskId).toBe(task.id);
+      expect(setup.events[0].payload.task).toMatchObject({ title: 'Test Task' });
+    });
+
+    it('should emit task-updated + task-status-changed when status changes', () => {
+      const task = setup.taskService.create({ title: 'Task', assigned_to: 'agent-1' });
+      setup.events.length = 0; // Clear create event
+
+      setup.taskService.update(task.id, { status: 'working' });
+
+      expect(setup.events).toHaveLength(2);
+      expect(setup.events[0].type).toBe(TaskEventType.TaskUpdated);
+      expect(setup.events[1].type).toBe(TaskEventType.TaskStatusChanged);
+      expect(setup.events[1].payload.before).toBe('idle');
+      expect(setup.events[1].payload.after).toBe('working');
+    });
+
+    it('should emit task-updated + task-assigned when assignee changes', () => {
+      const task = setup.taskService.create({ title: 'Task', assigned_to: 'agent-1' });
+      setup.events.length = 0;
+
+      setup.taskService.update(task.id, { assigned_to: 'agent-2' });
+
+      expect(setup.events).toHaveLength(2);
+      expect(setup.events[0].type).toBe(TaskEventType.TaskUpdated);
+      expect(setup.events[1].type).toBe(TaskEventType.TaskAssigned);
+      expect(setup.events[1].payload.before).toBe('agent-1');
+      expect(setup.events[1].payload.after).toBe('agent-2');
+    });
+
+    it('should emit task-updated + task-queue-changed when queue changes', () => {
+      const task = setup.taskService.create({
+        title: 'Task',
+        assigned_to: 'agent-1',
+        queue_name: 'queue-1',
+      });
+      setup.events.length = 0;
+
+      setup.taskService.update(task.id, { queue_name: 'queue-2' });
+
+      expect(setup.events).toHaveLength(2);
+      expect(setup.events[0].type).toBe(TaskEventType.TaskUpdated);
+      expect(setup.events[1].type).toBe(TaskEventType.TaskQueueChanged);
+      expect(setup.events[1].payload.before).toBe('queue-1');
+      expect(setup.events[1].payload.after).toBe('queue-2');
+    });
+
+    it('should emit only task-updated when title changes (no conditional events)', () => {
+      const task = setup.taskService.create({ title: 'Task', assigned_to: 'agent-1' });
+      setup.events.length = 0;
+
+      setup.taskService.update(task.id, { title: 'Updated Title' });
+
+      expect(setup.events).toHaveLength(1);
+      expect(setup.events[0].type).toBe(TaskEventType.TaskUpdated);
+      expect(setup.events[0].payload.changedFields).toContain('title');
+    });
+
+    it('should emit task-deleted when a task is deleted', () => {
+      const task = setup.taskService.create({ title: 'Task' });
+      setup.events.length = 0;
+
+      setup.taskService.delete(task.id);
+
+      expect(setup.events).toHaveLength(1);
+      expect(setup.events[0].type).toBe(TaskEventType.TaskDeleted);
+      expect(setup.events[0].payload.taskId).toBe(task.id);
+    });
+
+    it('should emit task-archived when a task is archived', () => {
+      const task = setup.taskService.create({ title: 'Task' });
+      setup.events.length = 0;
+
+      setup.taskService.archive(task.id);
+
+      expect(setup.events).toHaveLength(1);
+      expect(setup.events[0].type).toBe(TaskEventType.TaskArchived);
+      expect(setup.events[0].payload.taskId).toBe(task.id);
+      expect(setup.events[0].payload.task).toMatchObject({ title: 'Task' });
+    });
+  });
+
+  // ─── Assignment & status events ───
+
+  describe('Assignment & status events', () => {
+    it('should emit task-signed-up + task-status-changed on signup', () => {
+      setup.taskService.create({ title: 'Task', assigned_to: 'agent-1', status: 'idle' });
+      setup.events.length = 0;
+
+      const result = setup.taskService.signupForTask('agent-1');
+
+      expect(result).not.toBeNull();
+      expect(setup.events).toHaveLength(2);
+      expect(setup.events[0].type).toBe(TaskEventType.TaskSignedUp);
+      expect(setup.events[0].payload.agent).toBe('agent-1');
+      expect(setup.events[1].type).toBe(TaskEventType.TaskStatusChanged);
+      expect(setup.events[1].payload.before).toBe('idle');
+      expect(setup.events[1].payload.after).toBe('working');
+    });
+
+    it('should emit task-transferred + comment-added on moveTask', () => {
+      const task = setup.taskService.create({
+        title: 'Task',
+        assigned_to: 'agent-1',
+        status: 'idle',
+      });
+      setup.events.length = 0;
+
+      setup.taskService.moveTask(task.id, 'agent-1', 'agent-2', 'Handoff comment');
+
+      expect(setup.events).toHaveLength(2);
+      expect(setup.events[0].type).toBe(TaskEventType.TaskTransferred);
+      expect(setup.events[0].payload.from).toBe('agent-1');
+      expect(setup.events[0].payload.to).toBe('agent-2');
+      expect(setup.events[1].type).toBe(TaskEventType.CommentAdded);
+      expect(setup.events[1].payload.taskId).toBe(task.id);
+    });
+  });
+
+  // ─── Subtask events ───
+
+  describe('Subtask events', () => {
+    it('should emit subtask-created (and task-created) when a subtask is created', () => {
+      const parent = setup.taskService.create({ title: 'Parent' });
+      setup.events.length = 0;
+
+      const subtask = setup.taskService.createSubtask(parent.id, { title: 'Subtask' });
+
+      // create() emits task-created, createSubtask() additionally emits subtask-created
+      expect(setup.events).toHaveLength(2);
+      expect(setup.events[0].type).toBe(TaskEventType.TaskCreated);
+      expect(setup.events[1].type).toBe(TaskEventType.SubtaskCreated);
+      expect(setup.events[1].payload.parentId).toBe(parent.id);
+      expect(setup.events[1].payload.taskId).toBe(subtask.id);
+    });
+
+    it('should emit subtask-moved when a subtask is moved', () => {
+      const parent = setup.taskService.create({ title: 'Parent' });
+      const subtask = setup.taskService.createSubtask(parent.id, { title: 'Subtask' });
+      const newParent = setup.taskService.create({ title: 'New Parent' });
+      setup.events.length = 0;
+
+      setup.taskService.moveSubtask(subtask.id, newParent.id);
+
+      // update() emits task-updated, moveSubtask() additionally emits subtask-moved
+      expect(setup.events).toHaveLength(2);
+      expect(setup.events[0].type).toBe(TaskEventType.TaskUpdated);
+      expect(setup.events[1].type).toBe(TaskEventType.SubtaskMoved);
+      expect(setup.events[1].payload.oldParentId).toBe(parent.id);
+      expect(setup.events[1].payload.newParentId).toBe(newParent.id);
+    });
+  });
+
+  // ─── Comment events ───
+
+  describe('Comment events', () => {
+    it('should emit comment-added when a comment is created', () => {
+      const task = setup.taskService.create({ title: 'Task' });
+      setup.events.length = 0;
+
+      const comment = setup.commentService.create({
+        task_id: task.id,
+        content: 'Test comment',
+        created_by: 'agent-1',
+      });
+
+      expect(setup.events).toHaveLength(1);
+      expect(setup.events[0].type).toBe(TaskEventType.CommentAdded);
+      expect(setup.events[0].payload.taskId).toBe(task.id);
+      expect(setup.events[0].payload.comment.id).toBe(comment.id);
+    });
+
+    it('should emit comment-updated when a comment is updated', () => {
+      const task = setup.taskService.create({ title: 'Task' });
+      const comment = setup.commentService.create({
+        task_id: task.id,
+        content: 'Original',
+      });
+      setup.events.length = 0;
+
+      setup.commentService.update(comment.id, 'Updated content');
+
+      expect(setup.events).toHaveLength(1);
+      expect(setup.events[0].type).toBe(TaskEventType.CommentUpdated);
+      expect(setup.events[0].payload.taskId).toBe(task.id);
+      expect(setup.events[0].payload.commentId).toBe(comment.id);
+      expect(setup.events[0].payload.before).toBe('Original');
+      expect(setup.events[0].payload.after).toBe('Updated content');
+    });
+
+    it('should emit comment-deleted when a comment is deleted', () => {
+      const task = setup.taskService.create({ title: 'Task' });
+      const comment = setup.commentService.create({
+        task_id: task.id,
+        content: 'To be deleted',
+      });
+      setup.events.length = 0;
+
+      setup.commentService.delete(comment.id);
+
+      expect(setup.events).toHaveLength(1);
+      expect(setup.events[0].type).toBe(TaskEventType.CommentDeleted);
+      expect(setup.events[0].payload.taskId).toBe(task.id);
+      expect(setup.events[0].payload.commentId).toBe(comment.id);
+    });
+  });
+
+  // ─── Link events ───
+
+  describe('Link events', () => {
+    it('should emit link-added when a link is created', () => {
+      const task = setup.taskService.create({ title: 'Task' });
+      setup.events.length = 0;
+
+      const link = setup.linkService.create({
+        task_id: task.id,
+        url: 'https://example.com',
+        description: 'Example',
+      });
+
+      expect(setup.events).toHaveLength(1);
+      expect(setup.events[0].type).toBe(TaskEventType.LinkAdded);
+      expect(setup.events[0].payload.taskId).toBe(task.id);
+      expect(setup.events[0].payload.link.id).toBe(link.id);
+    });
+
+    it('should emit link-updated when a link is updated', () => {
+      const task = setup.taskService.create({ title: 'Task' });
+      const link = setup.linkService.create({
+        task_id: task.id,
+        url: 'https://old.com',
+      });
+      setup.events.length = 0;
+
+      setup.linkService.update(link.id, { url: 'https://new.com' });
+
+      expect(setup.events).toHaveLength(1);
+      expect(setup.events[0].type).toBe(TaskEventType.LinkUpdated);
+      expect(setup.events[0].payload.taskId).toBe(task.id);
+      expect(setup.events[0].payload.linkId).toBe(link.id);
+    });
+
+    it('should emit link-deleted when a link is deleted', () => {
+      const task = setup.taskService.create({ title: 'Task' });
+      const link = setup.linkService.create({
+        task_id: task.id,
+        url: 'https://example.com',
+      });
+      setup.events.length = 0;
+
+      setup.linkService.delete(link.id);
+
+      expect(setup.events).toHaveLength(1);
+      expect(setup.events[0].type).toBe(TaskEventType.LinkDeleted);
+      expect(setup.events[0].payload.taskId).toBe(task.id);
+      expect(setup.events[0].payload.linkId).toBe(link.id);
+    });
+  });
+
+  // ─── Queue events ───
+
+  describe('Queue events', () => {
+    it('should emit task-added-to-queue when a task is added to a queue', () => {
+      const task = setup.taskService.create({ title: 'Task' });
+      setup.events.length = 0;
+
+      setup.queueService.addTaskToQueue(task.id, 'test-queue');
+
+      expect(setup.events).toHaveLength(1);
+      expect(setup.events[0].type).toBe(TaskEventType.TaskAddedToQueue);
+      expect(setup.events[0].payload.taskId).toBe(task.id);
+      expect(setup.events[0].payload.queueName).toBe('test-queue');
+    });
+
+    it('should emit task-removed-from-queue with old queue name when removed', () => {
+      const task = setup.taskService.create({ title: 'Task', queue_name: 'test-queue' });
+      setup.events.length = 0;
+
+      setup.queueService.removeTaskFromQueue(task.id);
+
+      expect(setup.events).toHaveLength(1);
+      expect(setup.events[0].type).toBe(TaskEventType.TaskRemovedFromQueue);
+      expect(setup.events[0].payload.taskId).toBe(task.id);
+      expect(setup.events[0].payload.queueName).toBe('test-queue');
+    });
+
+    it('should emit task-queue-changed when a task is moved between queues', () => {
+      const task = setup.taskService.create({ title: 'Task', queue_name: 'queue-1' });
+      setup.events.length = 0;
+
+      setup.queueService.moveTaskToQueue(task.id, 'queue-2');
+
+      expect(setup.events).toHaveLength(1);
+      expect(setup.events[0].type).toBe(TaskEventType.TaskQueueChanged);
+      expect(setup.events[0].payload.taskId).toBe(task.id);
+      expect(setup.events[0].payload.before).toBe('queue-1');
+      expect(setup.events[0].payload.after).toBe('queue-2');
+    });
+
+    it('should emit queue-cleared when a queue is cleared', () => {
+      setup.taskService.create({ title: 'Task 1', queue_name: 'clear-queue' });
+      setup.taskService.create({ title: 'Task 2', queue_name: 'clear-queue' });
+      setup.events.length = 0;
+
+      const count = setup.queueService.clearQueue('clear-queue');
+
+      expect(setup.events).toHaveLength(1);
+      expect(setup.events[0].type).toBe(TaskEventType.QueueCleared);
+      expect(setup.events[0].payload.queueName).toBe('clear-queue');
+      expect(setup.events[0].payload.count).toBe(count);
+      expect(count).toBe(2);
+    });
+  });
+
+  // ─── EventBus behavior ───
+
+  describe('EventBus behavior', () => {
+    it('should not break service calls when a handler throws', () => {
+      const errorBus = new EventBus();
+      const taskService = new TaskService(setup.db, errorBus);
+
+      // Register a handler that throws
+      errorBus.on(TaskEventType.TaskCreated, () => {
+        throw new Error('Handler error');
+      });
+
+      // Service call should succeed despite handler error
+      expect(() => {
+        taskService.create({ title: 'Task' });
+      }).not.toThrow();
+    });
+
+    it('should deliver all events to wildcard subscribers', () => {
+      const bus = new EventBus();
+      const received: HubMessage[] = [];
+      bus.on('*', (event) => received.push(event));
+
+      bus.emit(createEvent(TaskEventType.TaskCreated, { taskId: 1 }));
+      bus.emit(createEvent(TaskEventType.CommentAdded, { taskId: 1 }));
+      bus.emit(createEvent(TaskEventType.LinkDeleted, { taskId: 1, linkId: 5 }));
+
+      expect(received).toHaveLength(3);
+      expect(received[0].type).toBe(TaskEventType.TaskCreated);
+      expect(received[1].type).toBe(TaskEventType.CommentAdded);
+      expect(received[2].type).toBe(TaskEventType.LinkDeleted);
+    });
+
+    it('should stop receiving events after unsubscribing', () => {
+      const bus = new EventBus();
+      const received: HubMessage[] = [];
+      const unsub = bus.on(TaskEventType.TaskCreated, (event) => received.push(event));
+
+      bus.emit(createEvent(TaskEventType.TaskCreated, { taskId: 1 }));
+      expect(received).toHaveLength(1);
+
+      unsub();
+      bus.emit(createEvent(TaskEventType.TaskCreated, { taskId: 2 }));
+      expect(received).toHaveLength(1); // Still only 1
+    });
+
+    it('should work without EventBus (backward compatibility)', () => {
+      const taskService = new TaskService(setup.db); // No EventBus
+      expect(() => {
+        const task = taskService.create({ title: 'Task' });
+        taskService.update(task.id, { status: 'working' });
+        taskService.delete(task.id);
+      }).not.toThrow();
+    });
+  });
+
+  // ─── Hub message schema conformance ───
+
+  describe('Hub message schema conformance', () => {
+    it('should produce events conforming to the hub message schema', () => {
+      setup.taskService.create({
+        title: 'Schema Test',
+        assigned_to: 'agent-1',
+        tags: ['test'],
+      });
+
+      for (const event of setup.events) {
+        // type: non-empty string, matches ^[a-zA-Z0-9_-]+$, max 50 chars
+        expect(event.type).toMatch(/^[a-zA-Z0-9_-]+$/);
+        expect(event.type.length).toBeLessThanOrEqual(50);
+
+        // timestamp: valid ISO 8601
+        expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+        expect(new Date(event.timestamp).toString()).not.toBe('Invalid Date');
+
+        // payload: is an object
+        expect(typeof event.payload).toBe('object');
+        expect(event.payload).not.toBeNull();
+
+        // metadata: source = 'tinytask', priority = 'normal'
+        expect(event.metadata).toBeDefined();
+        expect(event.metadata!.source).toBe('tinytask');
+        expect(event.metadata!.priority).toBe('normal');
+      }
+    });
+  });
+});
