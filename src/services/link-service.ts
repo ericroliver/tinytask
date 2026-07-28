@@ -131,13 +131,16 @@ export class LinkService {
     });
 
     if (beforeLink) {
-      const before: Partial<LinkData> = this.parseLink(beforeLink);
-      this.emit(TaskEventType.LinkUpdated, {
-        taskId: beforeLink.task_id,
-        linkId: id,
-        before,
-        after: updated,
-      });
+      const hasUpdates = updates.url !== undefined || updates.description !== undefined;
+      if (hasUpdates) {
+        const before: Partial<LinkData> = this.parseLink(beforeLink);
+        this.emit(TaskEventType.LinkUpdated, {
+          taskId: beforeLink.task_id,
+          linkId: id,
+          before,
+          after: updated,
+        });
+      }
     }
     return updated;
   }

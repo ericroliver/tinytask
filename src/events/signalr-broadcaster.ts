@@ -51,7 +51,7 @@ export class SignalRBroadcaster {
 
   private queue: HubMessage[] = [];
   private sendTimestamps: number[] = []; // sliding window of send times
-  private drainTimer: ReturnType<typeof setInterval> | null = null;
+  private drainTimer: ReturnType<typeof setTimeout> | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private started = false;
 
@@ -100,7 +100,7 @@ export class SignalRBroadcaster {
     this.started = false;
 
     if (this.drainTimer) {
-      clearInterval(this.drainTimer);
+      clearTimeout(this.drainTimer);
       this.drainTimer = null;
     }
     if (this.retryTimer) {
@@ -168,9 +168,6 @@ export class SignalRBroadcaster {
       logger.warn('SignalR reconnecting', {
         error: error instanceof Error ? error.message : undefined,
       });
-    });
-
-    this.connection.onreconnecting(() => {
       this.ensureDrainTimer();
     });
 
@@ -266,16 +263,19 @@ export class SignalRBroadcaster {
 
   private ensureDrainTimer(): void {
     if (this.drainTimer) return;
-    this.drainTimer = setInterval(() => this.drainQueue(), 1000);
+    this.drainTimer = setTimeout(() => {
+      this.drainTimer = null;
+      this.drainQueue().finally(() => {
+        // Re-arm if there are still pending events
+        if (this.queue.length > 0) {
+          this.ensureDrainTimer();
+        }
+      });
+    }, 1000);
   }
 
   private async drainQueue(): Promise<void> {
     if (this.queue.length === 0) {
-      // Nothing to send — stop the timer
-      if (this.drainTimer) {
-        clearInterval(this.drainTimer);
-        this.drainTimer = null;
-      }
       return;
     }
 

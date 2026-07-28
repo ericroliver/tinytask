@@ -95,11 +95,15 @@ async function main() {
 
     // Read remaining SignalR configuration
     const signalrLogLevel = process.env.TINYTASK_SIGNALR_LOG_LEVEL || 'Information';
-    const signalrMaxQueue = parseInt(process.env.TINYTASK_SIGNALR_MAX_QUEUE || '500', 10);
-    const signalrReconnectDelay = parseInt(
+    const parsedMaxQueue = Number.parseInt(process.env.TINYTASK_SIGNALR_MAX_QUEUE || '500', 10);
+    const signalrMaxQueue = Number.isFinite(parsedMaxQueue) ? parsedMaxQueue : 500;
+    const parsedReconnectDelay = Number.parseInt(
       process.env.TINYTASK_SIGNALR_RECONNECT_DELAY || '5000',
       10
     );
+    const signalrReconnectDelay = Number.isFinite(parsedReconnectDelay)
+      ? parsedReconnectDelay
+      : 5000;
 
     // Create EventBus (always — services emit to it, broadcaster subscribes if configured)
     const eventBus = new EventBus();
