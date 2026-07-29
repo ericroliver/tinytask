@@ -5,10 +5,11 @@
 export { EventBus } from './event-bus.js';
 export { SignalRBroadcaster } from './signalr-broadcaster.js';
 export type { SignalRBroadcasterOptions } from './signalr-broadcaster.js';
-export { TaskEventType, createEvent } from './event-types.js';
+export { TaskEventType, createEvent, extractTaskContext } from './event-types.js';
 export type {
   HubMessage,
   HubMessageMetadata,
+  TaskContext,
   TaskCreatedPayload,
   TaskUpdatedPayload,
   TaskDeletedPayload,

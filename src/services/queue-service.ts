@@ -6,7 +6,7 @@ import { DatabaseClient } from '../db/client.js';
 import { Task, ParsedTask, QueueStats, TaskFilters } from '../types/index.js';
 import { toISO8601 } from '../utils/timestamp.js';
 import { EventBus } from '../events/event-bus.js';
-import { TaskEventType, createEvent } from '../events/event-types.js';
+import { TaskEventType, createEvent, extractTaskContext } from '../events/event-types.js';
 
 export class QueueService {
   constructor(
@@ -133,7 +133,7 @@ export class QueueService {
       return this.parseTask(updated);
     });
 
-    this.emit(TaskEventType.TaskAddedToQueue, { taskId, queueName: queueName.trim() });
+    this.emit(TaskEventType.TaskAddedToQueue, { taskId, queueName: queueName.trim(), ...extractTaskContext(task) });
     return task;
   }
 
@@ -165,7 +165,7 @@ export class QueueService {
       return this.parseTask(updated);
     });
 
-    this.emit(TaskEventType.TaskRemovedFromQueue, { taskId, queueName: oldQueueName });
+    this.emit(TaskEventType.TaskRemovedFromQueue, { taskId, queueName: oldQueueName, ...extractTaskContext(task) });
     return task;
   }
 
@@ -211,6 +211,7 @@ export class QueueService {
       taskId,
       before: oldQueueName,
       after: newQueueName.trim(),
+      ...extractTaskContext(task),
     });
     return task;
   }

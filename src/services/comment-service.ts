@@ -3,10 +3,11 @@
  */
 
 import { DatabaseClient } from '../db/client.js';
-import { Comment, CreateCommentParams, CommentData } from '../types/index.js';
+import { Comment, CreateCommentParams, CommentData, Task } from '../types/index.js';
 import { toISO8601 } from '../utils/timestamp.js';
 import { EventBus } from '../events/event-bus.js';
 import { TaskEventType, createEvent } from '../events/event-types.js';
+import type { TaskContext } from '../events/event-types.js';
 
 export class CommentService {
   constructor(
@@ -20,6 +21,24 @@ export class CommentService {
   private emit(type: TaskEventType, payload: Record<string, unknown>): void {
     if (!this.eventBus) return;
     this.eventBus.emit(createEvent(type, payload));
+  }
+
+  /**
+   * Fetch core task context fields (assignee, owner, status, cue) by task ID.
+   * Returns null if the task doesn't exist.
+   */
+  private getTaskContext(taskId: number): TaskContext | null {
+    const task = this.db.queryOne<Task>(
+      'SELECT assigned_to, created_by, status, queue_name FROM tasks WHERE id = ?',
+      [taskId]
+    );
+    if (!task) return null;
+    return {
+      assignee: task.assigned_to,
+      owner: task.created_by,
+      status: task.status as TaskContext['status'],
+      cue: task.queue_name,
+    };
   }
 
   /**
@@ -67,7 +86,7 @@ export class CommentService {
       return this.parseComment(created);
     });
 
-    this.emit(TaskEventType.CommentAdded, { taskId: params.task_id, comment });
+    this.emit(TaskEventType.CommentAdded, { taskId: params.task_id, comment, ...(this.getTaskContext(params.task_id) ?? {}) });
     return comment;
   }
 
@@ -119,6 +138,7 @@ export class CommentService {
       commentId: id,
       before: beforeContent,
       after: content.trim(),
+      ...(this.getTaskContext(taskId) ?? {}),
     });
     return updated;
   }
@@ -139,7 +159,7 @@ export class CommentService {
       throw new Error(`Comment not found: ${id}`);
     }
 
-    this.emit(TaskEventType.CommentDeleted, { taskId: comment.task_id, commentId: id });
+    this.emit(TaskEventType.CommentDeleted, { taskId: comment.task_id, commentId: id, ...(this.getTaskContext(comment.task_id) ?? {}) });
   }
 
   /**

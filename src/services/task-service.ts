@@ -18,7 +18,8 @@ import {
 } from '../types/index.js';
 import { toISO8601 } from '../utils/timestamp.js';
 import { EventBus } from '../events/event-bus.js';
-import { TaskEventType, createEvent } from '../events/event-types.js';
+import { TaskEventType, createEvent, extractTaskContext } from '../events/event-types.js';
+import type { TaskContext } from '../events/event-types.js';
 
 export class TaskService {
   constructor(
@@ -116,7 +117,7 @@ export class TaskService {
       return parsedTask;
     });
 
-    this.emit(TaskEventType.TaskCreated, { taskId: task.id, task });
+    this.emit(TaskEventType.TaskCreated, { taskId: task.id, task, ...extractTaskContext(task) });
     return task;
   }
 
@@ -344,7 +345,7 @@ export class TaskService {
         }
       }
 
-      this.emit(TaskEventType.TaskUpdated, { taskId: id, before, after: updated, changedFields });
+      this.emit(TaskEventType.TaskUpdated, { taskId: id, before, after: updated, changedFields, ...extractTaskContext(updated) });
 
       // Conditional events
       if (updates.status !== undefined && updates.status !== before.status) {
@@ -352,6 +353,7 @@ export class TaskService {
           taskId: id,
           before: before.status,
           after: updates.status,
+          ...extractTaskContext(updated),
         });
       }
       if (
@@ -362,6 +364,7 @@ export class TaskService {
           taskId: id,
           before: before.assigned_to,
           after: updates.assigned_to || null,
+          ...extractTaskContext(updated),
         });
       }
       if (updates.queue_name !== undefined && updates.queue_name !== before.queue_name) {
@@ -369,6 +372,7 @@ export class TaskService {
           taskId: id,
           before: before.queue_name,
           after: updates.queue_name,
+          ...extractTaskContext(updated),
         });
       }
     }
@@ -380,9 +384,10 @@ export class TaskService {
    * Delete task permanently
    */
   delete(id: number): void {
+    let taskContext: TaskContext | null = null;
     this.db.transaction(() => {
-      // Get parent_task_id before deletion
-      const task = this.db.queryOne<Task>('SELECT parent_task_id FROM tasks WHERE id = ?', [id]);
+      // Capture full task before deletion (for event context)
+      const task = this.db.queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [id]);
       const parentId = task?.parent_task_id;
 
       const result = this.db.execute('DELETE FROM tasks WHERE id = ?', [id]);
@@ -391,13 +396,19 @@ export class TaskService {
         throw new Error(`Task not found: ${id}`);
       }
 
+      // Extract context before transaction ends
+      if (task) {
+        const parsed = this.parseTask(task);
+        taskContext = extractTaskContext(parsed);
+      }
+
       // Update parent status if task had a parent
       if (parentId != null) {
         this.updateParentStatus(parentId);
       }
     });
 
-    this.emit(TaskEventType.TaskDeleted, { taskId: id });
+    this.emit(TaskEventType.TaskDeleted, { taskId: id, ...(taskContext ?? { assignee: null, owner: null, status: 'idle' as TaskStatus, cue: null }) });
   }
 
   /**
@@ -497,7 +508,7 @@ export class TaskService {
       return archivedTask;
     });
 
-    this.emit(TaskEventType.TaskArchived, { taskId: id, task: archived });
+    this.emit(TaskEventType.TaskArchived, { taskId: id, task: archived, ...extractTaskContext(archived) });
     return archived;
   }
 
@@ -543,11 +554,13 @@ export class TaskService {
     });
 
     if (result) {
-      this.emit(TaskEventType.TaskSignedUp, { taskId: result.id, agent: agentName });
+      const ctx = extractTaskContext(result);
+      this.emit(TaskEventType.TaskSignedUp, { taskId: result.id, agent: agentName, ...ctx });
       this.emit(TaskEventType.TaskStatusChanged, {
         taskId: result.id,
         before: 'idle' as TaskStatus,
         after: 'working' as TaskStatus,
+        ...ctx,
       });
     }
 
@@ -627,15 +640,18 @@ export class TaskService {
       };
     });
 
+    const ctx = extractTaskContext(result.task);
     this.emit(TaskEventType.TaskTransferred, {
       taskId,
       from: currentAgent,
       to: newAgent,
       comment: comment.trim(),
+      ...ctx,
     });
     this.emit(TaskEventType.CommentAdded, {
       taskId,
       comment: result.comment,
+      ...ctx,
     });
 
     return result;
@@ -703,7 +719,7 @@ export class TaskService {
       parent_task_id: parentTaskId,
     });
 
-    this.emit(TaskEventType.SubtaskCreated, { taskId: task.id, parentId: parentTaskId, task });
+    this.emit(TaskEventType.SubtaskCreated, { taskId: task.id, parentId: parentTaskId, task, ...extractTaskContext(task) });
     return task;
   }
 
@@ -723,6 +739,7 @@ export class TaskService {
       taskId: subtaskId,
       oldParentId,
       newParentId,
+      ...extractTaskContext(updated),
     });
     return updated;
   }

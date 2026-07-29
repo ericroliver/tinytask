@@ -62,65 +62,96 @@ export enum TaskEventType {
   LinkDeleted = 'link-deleted',
 }
 
+// ─── Task Context (core fields included in every event payload) ───
+
+/**
+ * Core task context fields that every event payload must include.
+ * Provides consumers (e.g. the SignalR agent hub) with enough context
+ * to route or filter events without an additional lookup.
+ */
+export interface TaskContext {
+  /** Agent currently assigned to the task (null if unassigned) */
+  assignee: string | null;
+  /** Agent that created the task (null if not recorded) */
+  owner: string | null;
+  /** Current lifecycle status: idle | working | complete */
+  status: TaskStatus;
+  /** Queue (cue) the task belongs to (null if not in a queue) */
+  cue: string | null;
+}
+
+/**
+ * Extract core task context fields from a ParsedTask.
+ * Used by every service emit call to enrich event payloads.
+ */
+export function extractTaskContext(task: ParsedTask): TaskContext {
+  return {
+    assignee: task.assigned_to,
+    owner: task.created_by,
+    status: task.status,
+    cue: task.queue_name,
+  };
+}
+
 // ─── Payload Interfaces (one per event type, all include taskId) ───
 
-export interface TaskCreatedPayload {
+export interface TaskCreatedPayload extends TaskContext {
   taskId: number;
   task: ParsedTask;
 }
 
-export interface TaskUpdatedPayload {
+export interface TaskUpdatedPayload extends TaskContext {
   taskId: number;
   before: Partial<ParsedTask>;
   after: ParsedTask;
   changedFields: string[];
 }
 
-export interface TaskDeletedPayload {
+export interface TaskDeletedPayload extends TaskContext {
   taskId: number;
 }
 
-export interface TaskArchivedPayload {
+export interface TaskArchivedPayload extends TaskContext {
   taskId: number;
   task: ParsedTask;
 }
 
-export interface TaskStatusChangedPayload {
+export interface TaskStatusChangedPayload extends TaskContext {
   taskId: number;
   before: TaskStatus;
   after: TaskStatus;
 }
 
-export interface TaskAssignedPayload {
+export interface TaskAssignedPayload extends TaskContext {
   taskId: number;
   before: string | null;
   after: string | null;
 }
 
-export interface TaskTransferredPayload {
+export interface TaskTransferredPayload extends TaskContext {
   taskId: number;
   from: string;
   to: string;
   comment: string;
 }
 
-export interface TaskSignedUpPayload {
+export interface TaskSignedUpPayload extends TaskContext {
   taskId: number;
   agent: string;
 }
 
-export interface TaskQueueChangedPayload {
+export interface TaskQueueChangedPayload extends TaskContext {
   taskId: number;
   before: string | null;
   after: string | null;
 }
 
-export interface TaskAddedToQueuePayload {
+export interface TaskAddedToQueuePayload extends TaskContext {
   taskId: number;
   queueName: string;
 }
 
-export interface TaskRemovedFromQueuePayload {
+export interface TaskRemovedFromQueuePayload extends TaskContext {
   taskId: number;
   queueName: string | null;
 }
@@ -130,48 +161,48 @@ export interface QueueClearedPayload {
   count: number;
 }
 
-export interface SubtaskCreatedPayload {
+export interface SubtaskCreatedPayload extends TaskContext {
   taskId: number;
   parentId: number;
   task: ParsedTask;
 }
 
-export interface SubtaskMovedPayload {
+export interface SubtaskMovedPayload extends TaskContext {
   taskId: number;
   oldParentId: number | null;
   newParentId: number | null;
 }
 
-export interface CommentAddedPayload {
+export interface CommentAddedPayload extends TaskContext {
   taskId: number;
   comment: CommentData;
 }
 
-export interface CommentUpdatedPayload {
+export interface CommentUpdatedPayload extends TaskContext {
   taskId: number;
   commentId: number;
   before: string;
   after: string;
 }
 
-export interface CommentDeletedPayload {
+export interface CommentDeletedPayload extends TaskContext {
   taskId: number;
   commentId: number;
 }
 
-export interface LinkAddedPayload {
+export interface LinkAddedPayload extends TaskContext {
   taskId: number;
   link: LinkData;
 }
 
-export interface LinkUpdatedPayload {
+export interface LinkUpdatedPayload extends TaskContext {
   taskId: number;
   linkId: number;
   before: Partial<LinkData>;
   after: LinkData;
 }
 
-export interface LinkDeletedPayload {
+export interface LinkDeletedPayload extends TaskContext {
   taskId: number;
   linkId: number;
 }

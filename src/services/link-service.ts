@@ -3,10 +3,11 @@
  */
 
 import { DatabaseClient } from '../db/client.js';
-import { Link, CreateLinkParams, UpdateLinkParams, LinkData } from '../types/index.js';
+import { Link, CreateLinkParams, UpdateLinkParams, LinkData, Task } from '../types/index.js';
 import { toISO8601 } from '../utils/timestamp.js';
 import { EventBus } from '../events/event-bus.js';
 import { TaskEventType, createEvent } from '../events/event-types.js';
+import type { TaskContext } from '../events/event-types.js';
 
 export class LinkService {
   constructor(
@@ -20,6 +21,24 @@ export class LinkService {
   private emit(type: TaskEventType, payload: Record<string, unknown>): void {
     if (!this.eventBus) return;
     this.eventBus.emit(createEvent(type, payload));
+  }
+
+  /**
+   * Fetch core task context fields (assignee, owner, status, cue) by task ID.
+   * Returns null if the task doesn't exist.
+   */
+  private getTaskContext(taskId: number): TaskContext | null {
+    const task = this.db.queryOne<Task>(
+      'SELECT assigned_to, created_by, status, queue_name FROM tasks WHERE id = ?',
+      [taskId]
+    );
+    if (!task) return null;
+    return {
+      assignee: task.assigned_to,
+      owner: task.created_by,
+      status: task.status as TaskContext['status'],
+      cue: task.queue_name,
+    };
   }
 
   /**
@@ -66,7 +85,7 @@ export class LinkService {
       return this.parseLink(created);
     });
 
-    this.emit(TaskEventType.LinkAdded, { taskId: params.task_id, link });
+    this.emit(TaskEventType.LinkAdded, { taskId: params.task_id, link, ...(this.getTaskContext(params.task_id) ?? {}) });
     return link;
   }
 
@@ -139,6 +158,7 @@ export class LinkService {
           linkId: id,
           before,
           after: updated,
+          ...(this.getTaskContext(beforeLink.task_id) ?? {}),
         });
       }
     }
@@ -161,7 +181,7 @@ export class LinkService {
       throw new Error(`Link not found: ${id}`);
     }
 
-    this.emit(TaskEventType.LinkDeleted, { taskId: link.task_id, linkId: id });
+    this.emit(TaskEventType.LinkDeleted, { taskId: link.task_id, linkId: id, ...(this.getTaskContext(link.task_id) ?? {}) });
   }
 
   /**

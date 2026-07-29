@@ -449,6 +449,445 @@ describe('Event Broadcasting', () => {
     });
   });
 
+  // ─── Task context fields in payloads ───
+
+  describe('Task context fields in payloads', () => {
+    /**
+     * Helper: assert that a payload contains all 4 TaskContext fields.
+     */
+    function expectTaskContext(
+      payload: Record<string, unknown>,
+      expected: { assignee?: string | null; owner?: string | null; status?: string; cue?: string | null }
+    ) {
+      expect(payload).toHaveProperty('assignee');
+      expect(payload).toHaveProperty('owner');
+      expect(payload).toHaveProperty('status');
+      expect(payload).toHaveProperty('cue');
+      if (expected.assignee !== undefined) expect(payload.assignee).toBe(expected.assignee);
+      if (expected.owner !== undefined) expect(payload.owner).toBe(expected.owner);
+      if (expected.status !== undefined) expect(payload.status).toBe(expected.status);
+      if (expected.cue !== undefined) expect(payload.cue).toBe(expected.cue);
+    }
+
+    it('task-created: should include assignee, owner, status, cue', () => {
+      const task = setup.taskService.create({
+        title: 'Context Task',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+        priority: 5,
+        queue_name: 'dev-queue',
+      });
+
+      const event = setup.events.find((e) => e.type === TaskEventType.TaskCreated)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-1',
+        owner: 'creator',
+        status: 'idle',
+        cue: 'dev-queue',
+      });
+    });
+
+    it('task-updated: should include context from the updated task', () => {
+      const task = setup.taskService.create({
+        title: 'Task',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+        queue_name: 'q1',
+      });
+      setup.events.length = 0;
+
+      setup.taskService.update(task.id, { status: 'working' });
+
+      const event = setup.events.find((e) => e.type === TaskEventType.TaskUpdated)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-1',
+        owner: 'creator',
+        status: 'working',
+        cue: 'q1',
+      });
+    });
+
+    it('task-status-changed: should include context', () => {
+      const task = setup.taskService.create({
+        title: 'Task',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+      });
+      setup.events.length = 0;
+
+      setup.taskService.update(task.id, { status: 'complete' });
+
+      const event = setup.events.find((e) => e.type === TaskEventType.TaskStatusChanged)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-1',
+        owner: 'creator',
+        status: 'complete',
+      });
+    });
+
+    it('task-assigned: should include context', () => {
+      const task = setup.taskService.create({ title: 'Task', created_by: 'creator' });
+      setup.events.length = 0;
+
+      setup.taskService.update(task.id, { assigned_to: 'agent-2' });
+
+      const event = setup.events.find((e) => e.type === TaskEventType.TaskAssigned)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-2',
+        owner: 'creator',
+        status: 'idle',
+      });
+    });
+
+    it('task-queue-changed (task-service): should include context', () => {
+      const task = setup.taskService.create({
+        title: 'Task',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+        queue_name: 'q1',
+      });
+      setup.events.length = 0;
+
+      setup.taskService.update(task.id, { queue_name: 'q2' });
+
+      const event = setup.events.find((e) => e.type === TaskEventType.TaskQueueChanged)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-1',
+        owner: 'creator',
+        cue: 'q2',
+      });
+    });
+
+    it('task-deleted: should include context captured before deletion', () => {
+      const task = setup.taskService.create({
+        title: 'Task',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+        queue_name: 'del-queue',
+      });
+      setup.events.length = 0;
+
+      setup.taskService.delete(task.id);
+
+      const event = setup.events.find((e) => e.type === TaskEventType.TaskDeleted)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-1',
+        owner: 'creator',
+        status: 'idle',
+        cue: 'del-queue',
+      });
+    });
+
+    it('task-archived: should include context', () => {
+      const task = setup.taskService.create({
+        title: 'Task',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+        queue_name: 'arch-queue',
+      });
+      setup.events.length = 0;
+
+      setup.taskService.archive(task.id);
+
+      const event = setup.events.find((e) => e.type === TaskEventType.TaskArchived)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-1',
+        owner: 'creator',
+        status: 'idle',
+        cue: 'arch-queue',
+      });
+    });
+
+    it('task-signed-up: should include context', () => {
+      setup.taskService.create({
+        title: 'Task',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+        queue_name: 'signup-q',
+        status: 'idle',
+      });
+      setup.events.length = 0;
+
+      setup.taskService.signupForTask('agent-1');
+
+      const event = setup.events.find((e) => e.type === TaskEventType.TaskSignedUp)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-1',
+        owner: 'creator',
+        status: 'working',
+        cue: 'signup-q',
+      });
+    });
+
+    it('task-transferred: should include context', () => {
+      const task = setup.taskService.create({
+        title: 'Task',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+        queue_name: 'transfer-q',
+        status: 'idle',
+      });
+      setup.events.length = 0;
+
+      setup.taskService.moveTask(task.id, 'agent-1', 'agent-2', 'Handoff');
+
+      const event = setup.events.find((e) => e.type === TaskEventType.TaskTransferred)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-2',
+        owner: 'creator',
+        cue: 'transfer-q',
+      });
+    });
+
+    it('subtask-created: should include context', () => {
+      const parent = setup.taskService.create({
+        title: 'Parent',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+      });
+      setup.events.length = 0;
+
+      setup.taskService.createSubtask(parent.id, {
+        title: 'Subtask',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+      });
+
+      const event = setup.events.find((e) => e.type === TaskEventType.SubtaskCreated)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-1',
+        owner: 'creator',
+        status: 'idle',
+      });
+    });
+
+    it('subtask-moved: should include context', () => {
+      const parent = setup.taskService.create({ title: 'Parent' });
+      const subtask = setup.taskService.createSubtask(parent.id, {
+        title: 'Subtask',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+      });
+      const newParent = setup.taskService.create({ title: 'New Parent' });
+      setup.events.length = 0;
+
+      setup.taskService.moveSubtask(subtask.id, newParent.id);
+
+      const event = setup.events.find((e) => e.type === TaskEventType.SubtaskMoved)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-1',
+        owner: 'creator',
+      });
+    });
+
+    it('comment-added: should include context fetched from DB', () => {
+      const task = setup.taskService.create({
+        title: 'Task',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+        queue_name: 'comment-q',
+      });
+      setup.events.length = 0;
+
+      setup.commentService.create({
+        task_id: task.id,
+        content: 'Comment',
+        created_by: 'commenter',
+      });
+
+      const event = setup.events.find((e) => e.type === TaskEventType.CommentAdded)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-1',
+        owner: 'creator',
+        status: 'idle',
+        cue: 'comment-q',
+      });
+    });
+
+    it('comment-updated: should include context fetched from DB', () => {
+      const task = setup.taskService.create({
+        title: 'Task',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+      });
+      const comment = setup.commentService.create({
+        task_id: task.id,
+        content: 'Original',
+      });
+      setup.events.length = 0;
+
+      setup.commentService.update(comment.id, 'Updated');
+
+      const event = setup.events.find((e) => e.type === TaskEventType.CommentUpdated)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-1',
+        owner: 'creator',
+        status: 'idle',
+      });
+    });
+
+    it('comment-deleted: should include context fetched from DB', () => {
+      const task = setup.taskService.create({
+        title: 'Task',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+        queue_name: 'cdel-q',
+      });
+      const comment = setup.commentService.create({
+        task_id: task.id,
+        content: 'To delete',
+      });
+      setup.events.length = 0;
+
+      setup.commentService.delete(comment.id);
+
+      const event = setup.events.find((e) => e.type === TaskEventType.CommentDeleted)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-1',
+        owner: 'creator',
+        cue: 'cdel-q',
+      });
+    });
+
+    it('link-added: should include context fetched from DB', () => {
+      const task = setup.taskService.create({
+        title: 'Task',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+        queue_name: 'link-q',
+      });
+      setup.events.length = 0;
+
+      setup.linkService.create({
+        task_id: task.id,
+        url: 'https://example.com',
+      });
+
+      const event = setup.events.find((e) => e.type === TaskEventType.LinkAdded)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-1',
+        owner: 'creator',
+        status: 'idle',
+        cue: 'link-q',
+      });
+    });
+
+    it('link-updated: should include context fetched from DB', () => {
+      const task = setup.taskService.create({
+        title: 'Task',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+      });
+      const link = setup.linkService.create({
+        task_id: task.id,
+        url: 'https://old.com',
+      });
+      setup.events.length = 0;
+
+      setup.linkService.update(link.id, { url: 'https://new.com' });
+
+      const event = setup.events.find((e) => e.type === TaskEventType.LinkUpdated)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-1',
+        owner: 'creator',
+      });
+    });
+
+    it('link-deleted: should include context fetched from DB', () => {
+      const task = setup.taskService.create({
+        title: 'Task',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+        queue_name: 'ldel-q',
+      });
+      const link = setup.linkService.create({
+        task_id: task.id,
+        url: 'https://example.com',
+      });
+      setup.events.length = 0;
+
+      setup.linkService.delete(link.id);
+
+      const event = setup.events.find((e) => e.type === TaskEventType.LinkDeleted)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-1',
+        owner: 'creator',
+        cue: 'ldel-q',
+      });
+    });
+
+    it('task-added-to-queue: should include context', () => {
+      const task = setup.taskService.create({
+        title: 'Task',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+      });
+      setup.events.length = 0;
+
+      setup.queueService.addTaskToQueue(task.id, 'new-queue');
+
+      const event = setup.events.find((e) => e.type === TaskEventType.TaskAddedToQueue)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-1',
+        owner: 'creator',
+        status: 'idle',
+        cue: 'new-queue',
+      });
+    });
+
+    it('task-removed-from-queue: should include context', () => {
+      const task = setup.taskService.create({
+        title: 'Task',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+        queue_name: 'rem-q',
+      });
+      setup.events.length = 0;
+
+      setup.queueService.removeTaskFromQueue(task.id);
+
+      const event = setup.events.find((e) => e.type === TaskEventType.TaskRemovedFromQueue)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-1',
+        owner: 'creator',
+        cue: null,
+      });
+    });
+
+    it('task-queue-changed (queue-service): should include context', () => {
+      const task = setup.taskService.create({
+        title: 'Task',
+        assigned_to: 'agent-1',
+        created_by: 'creator',
+        queue_name: 'q1',
+      });
+      setup.events.length = 0;
+
+      setup.queueService.moveTaskToQueue(task.id, 'q2');
+
+      const event = setup.events.find((e) => e.type === TaskEventType.TaskQueueChanged)!;
+      expectTaskContext(event.payload, {
+        assignee: 'agent-1',
+        owner: 'creator',
+        cue: 'q2',
+      });
+    });
+
+    it('queue-cleared: should NOT include task context (no single task)', () => {
+      setup.taskService.create({ title: 'T1', queue_name: 'clear-q' });
+      setup.taskService.create({ title: 'T2', queue_name: 'clear-q' });
+      setup.events.length = 0;
+
+      setup.queueService.clearQueue('clear-q');
+
+      const event = setup.events.find((e) => e.type === TaskEventType.QueueCleared)!;
+      expect(event.payload).not.toHaveProperty('assignee');
+      expect(event.payload).not.toHaveProperty('owner');
+      expect(event.payload).not.toHaveProperty('status');
+      expect(event.payload).not.toHaveProperty('cue');
+    });
+  });
+
   // ─── Hub message schema conformance ───
 
   describe('Hub message schema conformance', () => {
