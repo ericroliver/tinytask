@@ -162,7 +162,12 @@ export class TableFormatter implements Formatter {
       lines.push(this.options.color ? chalk.cyan.bold('Comments:') : 'Comments:');
       task.comments.forEach((comment: unknown) => {
         const c = comment as Record<string, unknown>;
-        lines.push(`  [${c.id}] ${c.created_by || 'Unknown'}: ${c.content}`);
+        const date = this.formatDate(String(c.created_at));
+        lines.push(
+          this.options.color
+            ? `  ${chalk.bold(`[${c.id}]`)} ${c.created_by || 'Unknown'} ${chalk.gray(`(${date})`)}: ${c.content}`
+            : `  [${c.id}] ${c.created_by || 'Unknown'} (${date}): ${c.content}`
+        );
       });
     }
 

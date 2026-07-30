@@ -109,7 +109,25 @@ export class CompactFormatter implements Formatter {
       parts.push(`[${t.tags.join(', ')}]`);
     }
 
-    return parts.join(' ');
+    let result = parts.join(' ');
+
+    // Comments (shown when present, e.g. from `task get`)
+    if (Array.isArray(t.comments) && t.comments.length > 0) {
+      const lines = [result];
+      t.comments.forEach((comment: unknown) => {
+        const c = comment as Record<string, unknown>;
+        const author = c.created_by || 'Unknown';
+        const date = new Date(String(c.created_at)).toLocaleString();
+        lines.push(
+          this.options.color
+            ? `  ${chalk.bold(`[${c.id}]`)} ${chalk.gray(author)} ${chalk.gray(`(${date})`)} - ${c.content}`
+            : `  [${c.id}] ${author} (${date}) - ${c.content}`
+        );
+      });
+      result = lines.join('\n');
+    }
+
+    return result;
   }
 
   private formatId(id: number): string {

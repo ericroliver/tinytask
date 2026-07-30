@@ -128,7 +128,7 @@ build_linux_x86() {
     cd '$repo_path'
     git fetch origin && git checkout '$BRANCH' && git pull origin '$BRANCH'
     cd '$CLI_DIR'
-    docker run --rm -v \$(pwd):/app -w /app node:20-slim sh -c 'npm ci && npm run sea:linux && chmod +x dist/tinytask-linux'
+    docker run --rm --platform linux/amd64 -v \$(pwd):/app -w /app node:20-slim sh -c 'npm ci && npm run sea:linux && chmod +x dist/tinytask-linux'
     ./dist/tinytask-linux --version
   " 2>&1 | grep -v "^From " | grep -v "^Already on " | grep -v "^Your branch"
 
