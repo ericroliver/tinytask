@@ -358,10 +358,14 @@ export async function listTasksHandler(
   taskService: TaskService,
   params: {
     assigned_to?: string;
-    status?: 'idle' | 'working' | 'complete';
+    status?: 'idle' | 'working' | 'complete' | ('idle' | 'working' | 'complete')[];
+    exclude_status?: ('idle' | 'working' | 'complete')[];
     include_archived?: boolean;
     limit?: number;
     offset?: number;
+    queue_name?: string;
+    parent_task_id?: number;
+    exclude_subtasks?: boolean;
   }
 ) {
   try {

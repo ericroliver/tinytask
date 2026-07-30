@@ -27,7 +27,8 @@ export interface UpdateTaskParams {
 
 export interface TaskFilters {
   assigned_to?: string;
-  status?: 'idle' | 'working' | 'complete';
+  status?: 'idle' | 'working' | 'complete' | ('idle' | 'working' | 'complete')[];
+  exclude_status?: ('idle' | 'working' | 'complete')[];
   include_archived?: boolean;
   limit?: number;
   offset?: number;
@@ -55,7 +56,8 @@ export interface GetSubtasksParams {
 export interface QueueFilters {
   queue_name: string;
   assigned_to?: string;
-  status?: 'idle' | 'working' | 'complete';
+  status?: 'idle' | 'working' | 'complete' | ('idle' | 'working' | 'complete')[];
+  exclude_status?: ('idle' | 'working' | 'complete')[];
   parent_task_id?: number;
   exclude_subtasks?: boolean;
   include_archived?: boolean;
