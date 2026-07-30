@@ -486,7 +486,7 @@ export async function moveTaskHandler(
       content: [
         {
           type: 'text' as const,
-          text: `Task #${params.task_id} transferred from ${params.current_agent} to ${params.new_agent}\n\n${JSON.stringify(task, null, 2)}`,
+          text: JSON.stringify(task, null, 2),
         },
       ],
     };
@@ -495,7 +495,7 @@ export async function moveTaskHandler(
       content: [
         {
           type: 'text' as const,
-          text: `Error moving task: ${error instanceof Error ? error.message : String(error)}`,
+          text: error instanceof Error ? error.message : String(error),
         },
       ],
       isError: true,
