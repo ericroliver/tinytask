@@ -35,13 +35,18 @@ export function createMoveCommand(program: Command): void {
         }
 
         const client = await ensureConnected(config.url);
-        const task = await client.moveTask(parseInt(id), fromAgent, toAgent, options.comment);
+        const result = await client.moveTask(parseInt(id), fromAgent, toAgent, options.comment) as {
+          task?: Record<string, unknown>;
+          comment?: Record<string, unknown>;
+        };
 
         const formatter = createFormatter(config.outputFormat, {
           color: config.colorOutput,
           verbose: true,
         });
 
+        // moveTask returns { task, comment } — format the task part
+        const task = result.task ?? result;
         console.log(formatter.format(task));
 
         if (config.outputFormat === 'table') {

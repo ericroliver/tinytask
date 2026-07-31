@@ -358,10 +358,14 @@ export async function listTasksHandler(
   taskService: TaskService,
   params: {
     assigned_to?: string;
-    status?: 'idle' | 'working' | 'complete';
+    status?: 'idle' | 'working' | 'complete' | ('idle' | 'working' | 'complete')[];
+    exclude_status?: ('idle' | 'working' | 'complete')[];
     include_archived?: boolean;
     limit?: number;
     offset?: number;
+    queue_name?: string;
+    parent_task_id?: number;
+    exclude_subtasks?: boolean;
   }
 ) {
   try {
@@ -486,7 +490,7 @@ export async function moveTaskHandler(
       content: [
         {
           type: 'text' as const,
-          text: `Task #${params.task_id} transferred from ${params.current_agent} to ${params.new_agent}\n\n${JSON.stringify(task, null, 2)}`,
+          text: JSON.stringify(task, null, 2),
         },
       ],
     };
@@ -495,7 +499,7 @@ export async function moveTaskHandler(
       content: [
         {
           type: 'text' as const,
-          text: `Error moving task: ${error instanceof Error ? error.message : String(error)}`,
+          text: error instanceof Error ? error.message : String(error),
         },
       ],
       isError: true,

@@ -236,8 +236,22 @@ export class QueueService {
     }
 
     if (filters.status !== undefined) {
-      conditions.push('status = ?');
-      values.push(filters.status);
+      if (Array.isArray(filters.status)) {
+        if (filters.status.length > 0) {
+          const placeholders = filters.status.map(() => '?').join(', ');
+          conditions.push(`status IN (${placeholders})`);
+          values.push(...filters.status);
+        }
+      } else {
+        conditions.push('status = ?');
+        values.push(filters.status);
+      }
+    }
+
+    if (filters.exclude_status !== undefined && filters.exclude_status.length > 0) {
+      const placeholders = filters.exclude_status.map(() => '?').join(', ');
+      conditions.push(`status NOT IN (${placeholders})`);
+      values.push(...filters.exclude_status);
     }
 
     if (filters.parent_task_id !== undefined) {

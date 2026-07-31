@@ -49,7 +49,11 @@ export const toolSchemas = {
 
   list_tasks: z.object({
     assigned_to: z.string().optional().describe('Filter by assignee'),
-    status: z.enum(['idle', 'working', 'complete']).optional().describe('Filter by status'),
+    status: z.union([
+      z.enum(['idle', 'working', 'complete']),
+      z.array(z.enum(['idle', 'working', 'complete'])),
+    ]).optional().describe('Filter by status (single value or array of statuses)'),
+    exclude_status: z.array(z.enum(['idle', 'working', 'complete'])).optional().describe('Exclude tasks with these statuses'),
     include_archived: z.boolean().optional().describe('Include archived tasks'),
     limit: z.coerce.number().optional().describe('Max results (default: 100)'),
     offset: z.coerce.number().optional().describe('Pagination offset'),
@@ -124,7 +128,11 @@ export const toolSchemas = {
   get_queue_tasks: z.object({
     queue_name: z.string().describe('Queue name'),
     assigned_to: z.string().optional().describe('Filter by assignee'),
-    status: z.enum(['idle', 'working', 'complete']).optional().describe('Filter by status'),
+    status: z.union([
+      z.enum(['idle', 'working', 'complete']),
+      z.array(z.enum(['idle', 'working', 'complete'])),
+    ]).optional().describe('Filter by status (single value or array of statuses)'),
+    exclude_status: z.array(z.enum(['idle', 'working', 'complete'])).optional().describe('Exclude tasks with these statuses'),
     parent_task_id: z.coerce.number().optional().describe('Filter by parent task ID'),
     exclude_subtasks: z.boolean().optional().describe('Exclude subtasks from results'),
     include_archived: z.boolean().optional().describe('Include archived tasks'),

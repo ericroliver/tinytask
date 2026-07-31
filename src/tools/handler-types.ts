@@ -40,7 +40,8 @@ export interface ArchiveTaskParams {
 
 export interface ListTasksParams {
   assigned_to?: string;
-  status?: 'idle' | 'working' | 'complete';
+  status?: 'idle' | 'working' | 'complete' | ('idle' | 'working' | 'complete')[];
+  exclude_status?: ('idle' | 'working' | 'complete')[];
   include_archived?: boolean;
   limit?: number;
   offset?: number;
@@ -159,7 +160,8 @@ export interface MoveTaskToQueueParams {
 export interface GetQueueTasksParams {
   queue_name: string;
   assigned_to?: string;
-  status?: 'idle' | 'working' | 'complete';
+  status?: 'idle' | 'working' | 'complete' | ('idle' | 'working' | 'complete')[];
+  exclude_status?: ('idle' | 'working' | 'complete')[];
   parent_task_id?: number | null;
   exclude_subtasks?: boolean;
   include_archived?: boolean;

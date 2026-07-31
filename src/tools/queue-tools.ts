@@ -156,7 +156,8 @@ export async function getQueueTasksHandler(
   params: {
     queue_name: string;
     assigned_to?: string;
-    status?: 'idle' | 'working' | 'complete';
+    status?: 'idle' | 'working' | 'complete' | ('idle' | 'working' | 'complete')[];
+    exclude_status?: ('idle' | 'working' | 'complete')[];
     parent_task_id?: number | null;
     exclude_subtasks?: boolean;
     include_archived?: boolean;
@@ -168,6 +169,7 @@ export async function getQueueTasksHandler(
     const tasks = queueService.getQueueTasks(params.queue_name, {
       assigned_to: params.assigned_to,
       status: params.status,
+      exclude_status: params.exclude_status,
       parent_task_id: params.parent_task_id,
       exclude_subtasks: params.exclude_subtasks,
       include_archived: params.include_archived || false,
@@ -186,6 +188,7 @@ export async function getQueueTasksHandler(
               filters: {
                 assigned_to: params.assigned_to,
                 status: params.status,
+                exclude_status: params.exclude_status,
                 parent_task_id: params.parent_task_id,
                 exclude_subtasks: params.exclude_subtasks,
                 include_archived: params.include_archived || false,

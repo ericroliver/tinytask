@@ -11,7 +11,8 @@ export function createTaskListCommand(program: Command): void {
     .alias('ls')
     .description('List tasks')
     .option('-a, --assigned-to <agent>', 'Filter by assignee')
-    .option('-s, --status <status>', 'Filter by status (idle, working, complete)')
+    .option('-s, --status <status>', 'Filter by status (comma-separated, e.g., idle,working)')
+    .option('--excludeStatus <status>', 'Exclude statuses (comma-separated, e.g., complete)')
     .option('-q, --queue <name>', 'Filter by queue')
     .option('--parent <id>', 'Filter by parent task ID', parseInt)
     .option('--exclude-subtasks', 'Exclude subtasks from results')
@@ -36,7 +37,13 @@ export function createTaskListCommand(program: Command): void {
 
         const filters: TaskFilters = {};
         if (options.assignedTo) filters.assigned_to = options.assignedTo;
-        if (options.status) filters.status = options.status;
+        if (options.status) {
+          const statuses = options.status.split(',').map((s: string) => s.trim()).filter(Boolean);
+          filters.status = statuses.length === 1 ? statuses[0] : statuses;
+        }
+        if (options.excludeStatus) {
+          filters.exclude_status = options.excludeStatus.split(',').map((s: string) => s.trim()).filter(Boolean);
+        }
         if (options.queue) filters.queue_name = options.queue;
         if (options.parent !== undefined) filters.parent_task_id = options.parent;
         if (options.excludeSubtasks) filters.exclude_subtasks = true;

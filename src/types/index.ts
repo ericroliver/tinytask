@@ -81,7 +81,8 @@ export interface UpdateTaskParams {
 
 export interface TaskFilters {
   assigned_to?: string;
-  status?: TaskStatus;
+  status?: TaskStatus | TaskStatus[];
+  exclude_status?: TaskStatus[];
   include_archived?: boolean;
   limit?: number;
   offset?: number;

@@ -66,14 +66,33 @@ function parseQueryBool(param: string | undefined, fieldName: string): { value: 
 }
 
 /**
- * Parse and validate a query param as a status string.
+ * Parse and validate a query param as a status string or comma-separated list.
+ * Returns an array if multiple values are provided, a single string if one.
  */
-function parseQueryStatus(param: string | undefined): { value: 'idle' | 'working' | 'complete' | undefined; error?: string } {
+function parseQueryStatus(param: string | undefined): { value: 'idle' | 'working' | 'complete' | ('idle' | 'working' | 'complete')[] | undefined; error?: string } {
   if (param === undefined) return { value: undefined };
-  if (!VALID_STATUSES.includes(param as typeof VALID_STATUSES[number])) {
-    return { value: undefined, error: `status must be one of: ${VALID_STATUSES.join(', ')}` };
+  const parts = param.split(',').map(s => s.trim()).filter(Boolean);
+  for (const part of parts) {
+    if (!VALID_STATUSES.includes(part as typeof VALID_STATUSES[number])) {
+      return { value: undefined, error: `status must be one of: ${VALID_STATUSES.join(', ')} (got: "${part}")` };
+    }
   }
-  return { value: param as 'idle' | 'working' | 'complete' };
+  if (parts.length === 1) return { value: parts[0] as 'idle' | 'working' | 'complete' };
+  return { value: parts as ('idle' | 'working' | 'complete')[] };
+}
+
+/**
+ * Parse and validate a query param as a comma-separated exclude_status list.
+ */
+function parseQueryExcludeStatus(param: string | undefined): { value: ('idle' | 'working' | 'complete')[] | undefined; error?: string } {
+  if (param === undefined) return { value: undefined };
+  const parts = param.split(',').map(s => s.trim()).filter(Boolean);
+  for (const part of parts) {
+    if (!VALID_STATUSES.includes(part as typeof VALID_STATUSES[number])) {
+      return { value: undefined, error: `exclude_status must be one of: ${VALID_STATUSES.join(', ')} (got: "${part}")` };
+    }
+  }
+  return { value: parts as ('idle' | 'working' | 'complete')[] };
 }
 
 /**
@@ -189,6 +208,12 @@ export function createRestRouter(
         return;
       }
 
+      const excludeStatusResult = parseQueryExcludeStatus(req.query.exclude_status as string | undefined);
+      if (excludeStatusResult.error) {
+        res.status(400).json({ error: excludeStatusResult.error });
+        return;
+      }
+
       const limitResult = parseQueryInt(req.query.limit as string | undefined, 'limit');
       if (limitResult.error) {
         res.status(400).json({ error: limitResult.error });
@@ -230,6 +255,7 @@ export function createRestRouter(
       const tasks = taskService.list({
         assigned_to: req.query.assigned_to as string | undefined,
         status: statusResult.value,
+        exclude_status: excludeStatusResult.value,
         include_archived: includeArchivedResult.value ?? false,
         limit: limitResult.value,
         offset: offsetResult.value,
@@ -565,6 +591,12 @@ export function createRestRouter(
         return;
       }
 
+      const excludeStatusResult = parseQueryExcludeStatus(req.query.exclude_status as string | undefined);
+      if (excludeStatusResult.error) {
+        res.status(400).json({ error: excludeStatusResult.error });
+        return;
+      }
+
       const limitResult = parseQueryInt(req.query.limit as string | undefined, 'limit');
       if (limitResult.error) {
         res.status(400).json({ error: limitResult.error });
@@ -606,6 +638,7 @@ export function createRestRouter(
       const tasks = queueService.getQueueTasks(req.params.name, {
         assigned_to: req.query.assigned_to as string | undefined,
         status: statusResult.value,
+        exclude_status: excludeStatusResult.value,
         parent_task_id: parentTaskId,
         exclude_subtasks: excludeSubtasksResult.value ?? false,
         include_archived: includeArchivedResult.value ?? false,

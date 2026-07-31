@@ -135,7 +135,8 @@ export function createQueueCommands(program: Command): void {
   queue
     .command('tasks <queue-name>')
     .description('View all tasks in a queue')
-    .option('-s, --status <status>', 'Filter by status (idle, working, complete)')
+    .option('-s, --status <status>', 'Filter by status (comma-separated, e.g., idle,working)')
+    .option('--excludeStatus <status>', 'Exclude statuses (comma-separated, e.g., complete)')
     .option('-a, --assigned-to <agent>', 'Filter by assigned agent')
     .option('--exclude-subtasks', 'Exclude subtasks from results')
     .option('--include-archived', 'Include archived tasks')
@@ -159,7 +160,14 @@ export function createQueueCommands(program: Command): void {
 
         const filters = {
           queue_name: queueName,
-          status: options.status as 'idle' | 'working' | 'complete' | undefined,
+          status: options.status
+            ? (options.status.split(',').map((s: string) => s.trim()).filter(Boolean).length === 1
+                ? options.status.split(',')[0].trim()
+                : options.status.split(',').map((s: string) => s.trim()).filter(Boolean))
+            : undefined,
+          exclude_status: options.excludeStatus
+            ? options.excludeStatus.split(',').map((s: string) => s.trim()).filter(Boolean)
+            : undefined,
           assigned_to: options.assignedTo,
           exclude_subtasks: options.excludeSubtasks,
           include_archived: options.includeArchived,
