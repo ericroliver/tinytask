@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import { ensureConnected } from '../client/connection.js';
 import { createFormatter } from '../formatters/index.js';
 import { loadConfig } from '../config/loader.js';
+import { resolveContent } from '../utils/stdin.js';
 
 export function createLinkCommands(program: Command): void {
   const link = program.command('link').alias('l').description('Link/artifact operations');
@@ -13,6 +14,24 @@ export function createLinkCommands(program: Command): void {
     .description('Add a link to a task')
     .option('-d, --description <text>', 'Link description')
     .option('--created-by <agent>', 'Link author')
+    .option('--stdin', 'Read description from stdin instead of -d option')
+    .addHelpText(
+      'after',
+      [
+        '',
+        'Examples:',
+        '  # Short description via -d option',
+        '  tinytask link add 5 https://github.com/repo/pull/123 -d "Fixes auth bug"',
+        '',
+        '  # Long/multi-line description via stdin (avoids shell issues with backticks, $, etc.)',
+        "  tinytask link add 5 https://github.com/repo/pull/123 --stdin <<'EOF'",
+        '  [blocks] PR fixes `auth` module — blocks task #10',
+        '  EOF',
+        '',
+        '  # Always use --stdin with a quoted heredoc for content containing',
+        '  # backticks, $, or other shell metacharacters to prevent command substitution.',
+      ].join('\n')
+    )
     .action(async (taskId: string, url: string, options, command) => {
       try {
         const config = await loadConfig({
@@ -31,7 +50,7 @@ export function createLinkCommands(program: Command): void {
         const result = await client.addLink(
           parseInt(taskId),
           url,
-          options.description,
+          await resolveContent(options.stdin, options.description),
           options.createdBy || config.defaultAgent
         );
 

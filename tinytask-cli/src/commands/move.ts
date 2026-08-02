@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import { ensureConnected } from '../client/connection.js';
 import { createFormatter } from '../formatters/index.js';
 import { loadConfig } from '../config/loader.js';
+import { resolveContent } from '../utils/stdin.js';
 
 export function createMoveCommand(program: Command): void {
   program
@@ -10,6 +11,25 @@ export function createMoveCommand(program: Command): void {
     .description('Transfer task to another agent')
     .option('-f, --from <agent>', 'Current agent (defaults to config)')
     .option('-m, --comment <text>', 'Handoff comment', 'Task transferred')
+    .option('--stdin', 'Read comment from stdin instead of -m option')
+    .addHelpText(
+      'after',
+      [
+        '',
+        'Examples:',
+        '  # Short comment via -m option',
+        '  tinytask move 5 tko-shield -m "Defect fixed, please verify"',
+        '',
+        '  # Long/multi-line comment via stdin (avoids shell issues with backticks, $, etc.)',
+        "  tinytask move 5 tko-shield --stdin <<'EOF'",
+        '  Handoff: Fixed `hostname` injection in comment handler.',
+        '  See commit `abc123` and file `src/commands/comment.ts`.',
+        '  EOF',
+        '',
+        '  # Always use --stdin with a quoted heredoc for content containing',
+        '  # backticks, $, or other shell metacharacters to prevent command substitution.',
+      ].join('\n')
+    )
     .action(async (id: string, toAgent: string, options, command) => {
       try {
         const config = await loadConfig({
@@ -35,7 +55,11 @@ export function createMoveCommand(program: Command): void {
         }
 
         const client = await ensureConnected(config.url);
-        const result = await client.moveTask(parseInt(id), fromAgent, toAgent, options.comment) as {
+
+        // Resolve comment: use stdin if --stdin flag is set, otherwise use -m option
+        const comment = await resolveContent(options.stdin, options.comment);
+
+        const result = (await client.moveTask(parseInt(id), fromAgent, toAgent, comment)) as {
           task?: Record<string, unknown>;
           comment?: Record<string, unknown>;
         };

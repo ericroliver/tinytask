@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import { ensureConnected } from '../client/connection.js';
 import { createFormatter } from '../formatters/index.js';
 import { loadConfig } from '../config/loader.js';
+import { resolveContent } from '../utils/stdin.js';
 
 export function createSubtaskCommands(program: Command): void {
   const subtask = program
@@ -15,10 +16,29 @@ export function createSubtaskCommands(program: Command): void {
     .command('create <parent-id> <title>')
     .description('Create a new subtask under a parent task')
     .option('-d, --description <text>', 'Subtask description')
+    .option('--stdin', 'Read description from stdin instead of -d option')
     .option('-a, --assigned-to <agent>', 'Assign to agent')
     .option('-p, --priority <number>', 'Priority (default: 0)', parseInt)
     .option('-t, --tags <tags>', 'Comma-separated tags')
     .option('-q, --queue <name>', 'Override queue from parent')
+    .addHelpText(
+      'after',
+      [
+        '',
+        'Examples:',
+        '  # Short description via -d option',
+        '  tinytask subtask create 100 "Add validation" -d "Validate input fields"',
+        '',
+        '  # Long/multi-line description via stdin (avoids shell issues with backticks, $, etc.)',
+        '  tinytask subtask create 100 "Fix injection" --stdin <<\'EOF\'',
+        '  ## Problem',
+        '  Backticks in `bash -c` cause command substitution.',
+        '  EOF',
+        '',
+        '  # Always use --stdin with a quoted heredoc for content containing',
+        '  # backticks, $, or other shell metacharacters to prevent command substitution.',
+      ].join('\n')
+    )
     .action(async (parentId: string, title: string, options, command) => {
       try {
         const config = await loadConfig({
@@ -41,6 +61,9 @@ export function createSubtaskCommands(program: Command): void {
 
         const client = await ensureConnected(config.url);
 
+        // Resolve description: use stdin if --stdin flag is set, otherwise use -d option
+        const description = await resolveContent(options.stdin, options.description);
+
         const tags = options.tags
           ? options.tags.split(',').map((t: string) => t.trim())
           : undefined;
@@ -48,7 +71,7 @@ export function createSubtaskCommands(program: Command): void {
         const subtask = await client.createSubtask({
           parent_task_id: parent_id,
           title,
-          description: options.description,
+          description,
           assigned_to: options.assignedTo || config.defaultAgent,
           priority: options.priority,
           tags,
