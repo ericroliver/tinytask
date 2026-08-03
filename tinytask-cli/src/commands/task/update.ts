@@ -4,6 +4,7 @@ import { ensureConnected } from '../../client/connection.js';
 import { createFormatter } from '../../formatters/index.js';
 import { loadConfig } from '../../config/loader.js';
 import { UpdateTaskParams } from '../../client/mcp-client.js';
+import { resolveContent } from '../../utils/stdin.js';
 
 export function createTaskUpdateCommand(program: Command): void {
   program
@@ -11,12 +12,31 @@ export function createTaskUpdateCommand(program: Command): void {
     .description('Update a task')
     .option('-t, --title <text>', 'Update title')
     .option('-d, --description <text>', 'Update description')
+    .option('--stdin', 'Read description from stdin instead of -d option')
     .option('-s, --status <status>', 'Update status (idle, working, complete)')
     .option('-a, --assigned-to <agent>', 'Update assignee')
     .option('-p, --priority <number>', 'Update priority', parseInt)
     .option('--tags <tags>', 'Update tags (comma-separated)')
     .option('--parent <id>', 'Change parent task ID (use "null" to make top-level)')
     .option('-q, --queue <name>', 'Change queue assignment')
+    .addHelpText(
+      'after',
+      [
+        '',
+        'Examples:',
+        '  # Short description via -d option',
+        '  tinytask task update 5 -d "Updated description" --status working',
+        '',
+        '  # Long/multi-line description via stdin (avoids shell issues with backticks, $, etc.)',
+        "  tinytask task update 5 --stdin <<'EOF'",
+        '  ## Updated Description',
+        '  Fixed `hostname` field — now uses proper config.',
+        '  EOF',
+        '',
+        '  # Always use --stdin with a quoted heredoc for content containing',
+        '  # backticks, $, or other shell metacharacters to prevent command substitution.',
+      ].join('\n')
+    )
     .action(async (id: string, options, command) => {
       try {
         const config = await loadConfig({
@@ -36,8 +56,13 @@ export function createTaskUpdateCommand(program: Command): void {
         // Build update params
         const updates: UpdateTaskParams = { id: parseInt(id) };
 
+        // Resolve description: use stdin if --stdin flag is set, otherwise use -d option
+        if (options.stdin || options.description !== undefined) {
+          const description = await resolveContent(options.stdin, options.description);
+          if (description !== undefined) updates.description = description;
+        }
+
         if (options.title) updates.title = options.title;
-        if (options.description) updates.description = options.description;
         if (options.status) updates.status = options.status;
         if (options.assignedTo) updates.assigned_to = options.assignedTo;
         if (options.priority !== undefined) updates.priority = options.priority;
