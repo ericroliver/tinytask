@@ -42,6 +42,7 @@ describe('Error Handling', () => {
     test('Create task with invalid status throws error', () => {
       expect(() => {
         client.taskService.createTask({
+          created_by: 'test-creator',
           title: 'Test',
           status: 'invalid-status' as any,
         });
@@ -51,6 +52,7 @@ describe('Error Handling', () => {
     test('Create task with missing title throws error', () => {
       expect(() => {
         client.taskService.createTask({
+          created_by: 'test-creator',
           title: '',
         });
       }).toThrow();
@@ -213,6 +215,7 @@ describe('Error Handling', () => {
     test('Create task with very long title', () => {
       const longTitle = 'A'.repeat(1000);
       const task = client.taskService.createTask({
+        created_by: 'test-creator',
         title: longTitle,
       });
 
@@ -222,6 +225,7 @@ describe('Error Handling', () => {
     test('Create task with very long description', () => {
       const longDescription = 'B'.repeat(10000);
       const task = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Test',
         description: longDescription,
       });
@@ -265,6 +269,7 @@ describe('Error Handling', () => {
 
     test('Task with special characters in fields', () => {
       const task = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Task with "quotes" and \'apostrophes\'',
         description: 'Description with <html> tags & special chars',
         status: 'idle',

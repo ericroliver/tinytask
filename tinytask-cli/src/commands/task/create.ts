@@ -66,7 +66,7 @@ export function createTaskCreateCommand(program: Command): void {
           title,
           description,
           assigned_to: options.assignedTo || config.defaultAgent,
-          created_by: options.createdBy,
+          created_by: options.createdBy || config.defaultAgent,
           priority: options.priority,
           tags,
           parent_task_id: options.parent,

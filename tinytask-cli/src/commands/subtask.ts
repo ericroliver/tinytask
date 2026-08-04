@@ -18,6 +18,7 @@ export function createSubtaskCommands(program: Command): void {
     .option('-d, --description <text>', 'Subtask description')
     .option('--stdin', 'Read description from stdin instead of -d option')
     .option('-a, --assigned-to <agent>', 'Assign to agent')
+    .option('-c, --created-by <agent>', 'Created by agent')
     .option('-p, --priority <number>', 'Priority (default: 0)', parseInt)
     .option('-t, --tags <tags>', 'Comma-separated tags')
     .option('-q, --queue <name>', 'Override queue from parent')
@@ -73,6 +74,7 @@ export function createSubtaskCommands(program: Command): void {
           title,
           description,
           assigned_to: options.assignedTo || config.defaultAgent,
+          created_by: options.createdBy || config.defaultAgent,
           priority: options.priority,
           tags,
           queue_name: options.queue,

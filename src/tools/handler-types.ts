@@ -7,7 +7,7 @@ export interface CreateTaskParams {
   title: string;
   description?: string;
   assigned_to?: string;
-  created_by?: string;
+  created_by: string;
   priority?: number;
   tags?: string[];
   parent_task_id?: number;
@@ -113,6 +113,7 @@ export interface CreateSubtaskParams {
   title: string;
   description?: string;
   assigned_to?: string;
+  created_by: string;
   priority?: number;
   tags?: string[];
   queue_name?: string;

@@ -69,6 +69,7 @@ describe('Event Broadcasting', () => {
   describe('Task lifecycle events', () => {
     it('should emit task-created when a task is created', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Test Task',
         description: 'Test description',
         assigned_to: 'agent-1',
@@ -84,7 +85,7 @@ describe('Event Broadcasting', () => {
     });
 
     it('should emit task-updated + task-status-changed when status changes', () => {
-      const task = setup.taskService.create({ title: 'Task', assigned_to: 'agent-1' });
+      const task = setup.taskService.create({ created_by: 'test-creator', title: 'Task', assigned_to: 'agent-1' });
       setup.events.length = 0; // Clear create event
 
       setup.taskService.update(task.id, { status: 'working' });
@@ -97,7 +98,7 @@ describe('Event Broadcasting', () => {
     });
 
     it('should emit task-updated + task-assigned when assignee changes', () => {
-      const task = setup.taskService.create({ title: 'Task', assigned_to: 'agent-1' });
+      const task = setup.taskService.create({ created_by: 'test-creator', title: 'Task', assigned_to: 'agent-1' });
       setup.events.length = 0;
 
       setup.taskService.update(task.id, { assigned_to: 'agent-2' });
@@ -111,6 +112,7 @@ describe('Event Broadcasting', () => {
 
     it('should emit task-updated + task-queue-changed when queue changes', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         assigned_to: 'agent-1',
         queue_name: 'queue-1',
@@ -127,7 +129,7 @@ describe('Event Broadcasting', () => {
     });
 
     it('should emit only task-updated when title changes (no conditional events)', () => {
-      const task = setup.taskService.create({ title: 'Task', assigned_to: 'agent-1' });
+      const task = setup.taskService.create({ created_by: 'test-creator', title: 'Task', assigned_to: 'agent-1' });
       setup.events.length = 0;
 
       setup.taskService.update(task.id, { title: 'Updated Title' });
@@ -138,7 +140,7 @@ describe('Event Broadcasting', () => {
     });
 
     it('should emit task-deleted when a task is deleted', () => {
-      const task = setup.taskService.create({ title: 'Task' });
+      const task = setup.taskService.create({ created_by: 'test-creator', title: 'Task' });
       setup.events.length = 0;
 
       setup.taskService.delete(task.id);
@@ -149,7 +151,7 @@ describe('Event Broadcasting', () => {
     });
 
     it('should emit task-archived when a task is archived', () => {
-      const task = setup.taskService.create({ title: 'Task' });
+      const task = setup.taskService.create({ created_by: 'test-creator', title: 'Task' });
       setup.events.length = 0;
 
       setup.taskService.archive(task.id);
@@ -165,7 +167,7 @@ describe('Event Broadcasting', () => {
 
   describe('Assignment & status events', () => {
     it('should emit task-signed-up + task-status-changed on signup', () => {
-      setup.taskService.create({ title: 'Task', assigned_to: 'agent-1', status: 'idle' });
+      setup.taskService.create({ created_by: 'test-creator', title: 'Task', assigned_to: 'agent-1', status: 'idle' });
       setup.events.length = 0;
 
       const result = setup.taskService.signupForTask('agent-1');
@@ -181,6 +183,7 @@ describe('Event Broadcasting', () => {
 
     it('should emit task-transferred + comment-added on moveTask', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         assigned_to: 'agent-1',
         status: 'idle',
@@ -202,10 +205,10 @@ describe('Event Broadcasting', () => {
 
   describe('Subtask events', () => {
     it('should emit subtask-created (and task-created) when a subtask is created', () => {
-      const parent = setup.taskService.create({ title: 'Parent' });
+      const parent = setup.taskService.create({ created_by: 'test-creator', title: 'Parent' });
       setup.events.length = 0;
 
-      const subtask = setup.taskService.createSubtask(parent.id, { title: 'Subtask' });
+      const subtask = setup.taskService.createSubtask(parent.id, { created_by: 'test-creator', title: 'Subtask' });
 
       // create() emits task-created, createSubtask() additionally emits subtask-created
       expect(setup.events).toHaveLength(2);
@@ -216,9 +219,9 @@ describe('Event Broadcasting', () => {
     });
 
     it('should emit subtask-moved when a subtask is moved', () => {
-      const parent = setup.taskService.create({ title: 'Parent' });
-      const subtask = setup.taskService.createSubtask(parent.id, { title: 'Subtask' });
-      const newParent = setup.taskService.create({ title: 'New Parent' });
+      const parent = setup.taskService.create({ created_by: 'test-creator', title: 'Parent' });
+      const subtask = setup.taskService.createSubtask(parent.id, { created_by: 'test-creator', title: 'Subtask' });
+      const newParent = setup.taskService.create({ created_by: 'test-creator', title: 'New Parent' });
       setup.events.length = 0;
 
       setup.taskService.moveSubtask(subtask.id, newParent.id);
@@ -236,7 +239,7 @@ describe('Event Broadcasting', () => {
 
   describe('Comment events', () => {
     it('should emit comment-added when a comment is created', () => {
-      const task = setup.taskService.create({ title: 'Task' });
+      const task = setup.taskService.create({ created_by: 'test-creator', title: 'Task' });
       setup.events.length = 0;
 
       const comment = setup.commentService.create({
@@ -252,7 +255,7 @@ describe('Event Broadcasting', () => {
     });
 
     it('should emit comment-updated when a comment is updated', () => {
-      const task = setup.taskService.create({ title: 'Task' });
+      const task = setup.taskService.create({ created_by: 'test-creator', title: 'Task' });
       const comment = setup.commentService.create({
         task_id: task.id,
         content: 'Original',
@@ -270,7 +273,7 @@ describe('Event Broadcasting', () => {
     });
 
     it('should emit comment-deleted when a comment is deleted', () => {
-      const task = setup.taskService.create({ title: 'Task' });
+      const task = setup.taskService.create({ created_by: 'test-creator', title: 'Task' });
       const comment = setup.commentService.create({
         task_id: task.id,
         content: 'To be deleted',
@@ -290,7 +293,7 @@ describe('Event Broadcasting', () => {
 
   describe('Link events', () => {
     it('should emit link-added when a link is created', () => {
-      const task = setup.taskService.create({ title: 'Task' });
+      const task = setup.taskService.create({ created_by: 'test-creator', title: 'Task' });
       setup.events.length = 0;
 
       const link = setup.linkService.create({
@@ -306,7 +309,7 @@ describe('Event Broadcasting', () => {
     });
 
     it('should emit link-updated when a link is updated', () => {
-      const task = setup.taskService.create({ title: 'Task' });
+      const task = setup.taskService.create({ created_by: 'test-creator', title: 'Task' });
       const link = setup.linkService.create({
         task_id: task.id,
         url: 'https://old.com',
@@ -322,7 +325,7 @@ describe('Event Broadcasting', () => {
     });
 
     it('should emit link-deleted when a link is deleted', () => {
-      const task = setup.taskService.create({ title: 'Task' });
+      const task = setup.taskService.create({ created_by: 'test-creator', title: 'Task' });
       const link = setup.linkService.create({
         task_id: task.id,
         url: 'https://example.com',
@@ -342,7 +345,7 @@ describe('Event Broadcasting', () => {
 
   describe('Queue events', () => {
     it('should emit task-added-to-queue when a task is added to a queue', () => {
-      const task = setup.taskService.create({ title: 'Task' });
+      const task = setup.taskService.create({ created_by: 'test-creator', title: 'Task' });
       setup.events.length = 0;
 
       setup.queueService.addTaskToQueue(task.id, 'test-queue');
@@ -354,7 +357,7 @@ describe('Event Broadcasting', () => {
     });
 
     it('should emit task-removed-from-queue with old queue name when removed', () => {
-      const task = setup.taskService.create({ title: 'Task', queue_name: 'test-queue' });
+      const task = setup.taskService.create({ created_by: 'test-creator', title: 'Task', queue_name: 'test-queue' });
       setup.events.length = 0;
 
       setup.queueService.removeTaskFromQueue(task.id);
@@ -366,7 +369,7 @@ describe('Event Broadcasting', () => {
     });
 
     it('should emit task-queue-changed when a task is moved between queues', () => {
-      const task = setup.taskService.create({ title: 'Task', queue_name: 'queue-1' });
+      const task = setup.taskService.create({ created_by: 'test-creator', title: 'Task', queue_name: 'queue-1' });
       setup.events.length = 0;
 
       setup.queueService.moveTaskToQueue(task.id, 'queue-2');
@@ -379,8 +382,8 @@ describe('Event Broadcasting', () => {
     });
 
     it('should emit queue-cleared when a queue is cleared', () => {
-      setup.taskService.create({ title: 'Task 1', queue_name: 'clear-queue' });
-      setup.taskService.create({ title: 'Task 2', queue_name: 'clear-queue' });
+      setup.taskService.create({ created_by: 'test-creator', title: 'Task 1', queue_name: 'clear-queue' });
+      setup.taskService.create({ created_by: 'test-creator', title: 'Task 2', queue_name: 'clear-queue' });
       setup.events.length = 0;
 
       const count = setup.queueService.clearQueue('clear-queue');
@@ -407,7 +410,7 @@ describe('Event Broadcasting', () => {
 
       // Service call should succeed despite handler error
       expect(() => {
-        taskService.create({ title: 'Task' });
+        taskService.create({ created_by: 'test-creator', title: 'Task' });
       }).not.toThrow();
     });
 
@@ -442,7 +445,7 @@ describe('Event Broadcasting', () => {
     it('should work without EventBus (backward compatibility)', () => {
       const taskService = new TaskService(setup.db); // No EventBus
       expect(() => {
-        const task = taskService.create({ title: 'Task' });
+        const task = taskService.create({ created_by: 'test-creator', title: 'Task' });
         taskService.update(task.id, { status: 'working' });
         taskService.delete(task.id);
       }).not.toThrow();
@@ -471,6 +474,7 @@ describe('Event Broadcasting', () => {
 
     it('task-created: should include assignee, owner, status, cue', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Context Task',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -489,6 +493,7 @@ describe('Event Broadcasting', () => {
 
     it('task-updated: should include context from the updated task', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -509,6 +514,7 @@ describe('Event Broadcasting', () => {
 
     it('task-status-changed: should include context', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -541,6 +547,7 @@ describe('Event Broadcasting', () => {
 
     it('task-queue-changed (task-service): should include context', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -560,6 +567,7 @@ describe('Event Broadcasting', () => {
 
     it('task-deleted: should include context captured before deletion', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -580,6 +588,7 @@ describe('Event Broadcasting', () => {
 
     it('task-archived: should include context', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -600,6 +609,7 @@ describe('Event Broadcasting', () => {
 
     it('task-signed-up: should include context', () => {
       setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -621,6 +631,7 @@ describe('Event Broadcasting', () => {
 
     it('task-transferred: should include context', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -641,6 +652,7 @@ describe('Event Broadcasting', () => {
 
     it('subtask-created: should include context', () => {
       const parent = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Parent',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -648,6 +660,7 @@ describe('Event Broadcasting', () => {
       setup.events.length = 0;
 
       setup.taskService.createSubtask(parent.id, {
+        created_by: 'test-creator',
         title: 'Subtask',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -662,13 +675,14 @@ describe('Event Broadcasting', () => {
     });
 
     it('subtask-moved: should include context', () => {
-      const parent = setup.taskService.create({ title: 'Parent' });
+      const parent = setup.taskService.create({ created_by: 'test-creator', title: 'Parent' });
       const subtask = setup.taskService.createSubtask(parent.id, {
+        created_by: 'test-creator',
         title: 'Subtask',
         assigned_to: 'agent-1',
         created_by: 'creator',
       });
-      const newParent = setup.taskService.create({ title: 'New Parent' });
+      const newParent = setup.taskService.create({ created_by: 'test-creator', title: 'New Parent' });
       setup.events.length = 0;
 
       setup.taskService.moveSubtask(subtask.id, newParent.id);
@@ -682,6 +696,7 @@ describe('Event Broadcasting', () => {
 
     it('comment-added: should include context fetched from DB', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -706,6 +721,7 @@ describe('Event Broadcasting', () => {
 
     it('comment-updated: should include context fetched from DB', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -728,6 +744,7 @@ describe('Event Broadcasting', () => {
 
     it('comment-deleted: should include context fetched from DB', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -751,6 +768,7 @@ describe('Event Broadcasting', () => {
 
     it('link-added: should include context fetched from DB', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -774,6 +792,7 @@ describe('Event Broadcasting', () => {
 
     it('link-updated: should include context fetched from DB', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -795,6 +814,7 @@ describe('Event Broadcasting', () => {
 
     it('link-deleted: should include context fetched from DB', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -818,6 +838,7 @@ describe('Event Broadcasting', () => {
 
     it('task-added-to-queue: should include context', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -837,6 +858,7 @@ describe('Event Broadcasting', () => {
 
     it('task-removed-from-queue: should include context', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -856,6 +878,7 @@ describe('Event Broadcasting', () => {
 
     it('task-queue-changed (queue-service): should include context', () => {
       const task = setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         assigned_to: 'agent-1',
         created_by: 'creator',
@@ -874,8 +897,8 @@ describe('Event Broadcasting', () => {
     });
 
     it('queue-cleared: should NOT include task context (no single task)', () => {
-      setup.taskService.create({ title: 'T1', queue_name: 'clear-q' });
-      setup.taskService.create({ title: 'T2', queue_name: 'clear-q' });
+      setup.taskService.create({ created_by: 'test-creator', title: 'T1', queue_name: 'clear-q' });
+      setup.taskService.create({ created_by: 'test-creator', title: 'T2', queue_name: 'clear-q' });
       setup.events.length = 0;
 
       setup.queueService.clearQueue('clear-q');
@@ -893,6 +916,7 @@ describe('Event Broadcasting', () => {
   describe('Hub message schema conformance', () => {
     it('should produce events conforming to the hub message schema', () => {
       setup.taskService.create({
+        created_by: 'test-creator',
         title: 'Schema Test',
         assigned_to: 'agent-1',
         tags: ['test'],

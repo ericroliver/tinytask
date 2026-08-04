@@ -139,6 +139,11 @@ function validateTaskBodyFields(body: Record<string, unknown>, isPatch: boolean)
     return 'assigned_to must be a string';
   }
 
+  // created_by: required for task creation (not for updates)
+  if (!isPatch && (!body.created_by || (typeof body.created_by === 'string' && body.created_by.trim().length === 0))) {
+    return 'created_by is required';
+  }
+
   // created_by: must be a string if provided
   if (body.created_by !== undefined && body.created_by !== null && !isString(body.created_by)) {
     return 'created_by must be a string';

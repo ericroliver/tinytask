@@ -33,18 +33,21 @@ describe('Parent Status Propagation', () => {
     it('should set parent to idle when all children are idle', () => {
       // Create parent
       const parent = taskService.create({
+        created_by: 'test-creator',
         title: 'Parent Task',
         status: 'working', // Start with different status
       });
 
       // Create children - all idle
       taskService.create({
+        created_by: 'test-creator',
         title: 'Child 1',
         status: 'idle',
         parent_task_id: parent.id,
       });
 
       taskService.create({
+        created_by: 'test-creator',
         title: 'Child 2',
         status: 'idle',
         parent_task_id: parent.id,
@@ -58,18 +61,21 @@ describe('Parent Status Propagation', () => {
     it('should set parent to working when any child is working', () => {
       // Create parent
       const parent = taskService.create({
+        created_by: 'test-creator',
         title: 'Parent Task',
         status: 'idle',
       });
 
       // Create children - one working
       taskService.create({
+        created_by: 'test-creator',
         title: 'Child 1',
         status: 'idle',
         parent_task_id: parent.id,
       });
 
       const child2 = taskService.create({
+        created_by: 'test-creator',
         title: 'Child 2',
         status: 'idle',
         parent_task_id: parent.id,
@@ -86,18 +92,21 @@ describe('Parent Status Propagation', () => {
     it('should set parent to complete when all children are complete', () => {
       // Create parent
       const parent = taskService.create({
+        created_by: 'test-creator',
         title: 'Parent Task',
         status: 'working',
       });
 
       // Create children - all complete
       const child1 = taskService.create({
+        created_by: 'test-creator',
         title: 'Child 1',
         status: 'working',
         parent_task_id: parent.id,
       });
 
       const child2 = taskService.create({
+        created_by: 'test-creator',
         title: 'Child 2',
         status: 'working',
         parent_task_id: parent.id,
@@ -115,17 +124,20 @@ describe('Parent Status Propagation', () => {
     it('should revert parent from complete to working when a child goes back to working', () => {
       // Create parent and children
       const parent = taskService.create({
+        created_by: 'test-creator',
         title: 'Parent Task',
         status: 'working',
       });
 
       const child1 = taskService.create({
+        created_by: 'test-creator',
         title: 'Child 1',
         status: 'complete',
         parent_task_id: parent.id,
       });
 
       const child2 = taskService.create({
+        created_by: 'test-creator',
         title: 'Child 2',
         status: 'complete',
         parent_task_id: parent.id,
@@ -146,17 +158,20 @@ describe('Parent Status Propagation', () => {
     it('should revert parent from complete to idle when a child goes back to idle', () => {
       // Create parent and children
       const parent = taskService.create({
+        created_by: 'test-creator',
         title: 'Parent Task',
         status: 'working',
       });
 
       const child1 = taskService.create({
+        created_by: 'test-creator',
         title: 'Child 1',
         status: 'complete',
         parent_task_id: parent.id,
       });
 
       const child2 = taskService.create({
+        created_by: 'test-creator',
         title: 'Child 2',
         status: 'complete',
         parent_task_id: parent.id,
@@ -177,17 +192,20 @@ describe('Parent Status Propagation', () => {
 
     it('should update parent status when a child is deleted', () => {
       const parent = taskService.create({
+        created_by: 'test-creator',
         title: 'Parent Task',
         status: 'idle',
       });
 
       const child1 = taskService.create({
+        created_by: 'test-creator',
         title: 'Child 1',
         status: 'working',
         parent_task_id: parent.id,
       });
 
       const child2 = taskService.create({
+        created_by: 'test-creator',
         title: 'Child 2',
         status: 'complete',
         parent_task_id: parent.id,
@@ -207,17 +225,20 @@ describe('Parent Status Propagation', () => {
 
     it('should update parent status when a child is archived', () => {
       const parent = taskService.create({
+        created_by: 'test-creator',
         title: 'Parent Task',
         status: 'idle',
       });
 
       const child1 = taskService.create({
+        created_by: 'test-creator',
         title: 'Child 1',
         status: 'working',
         parent_task_id: parent.id,
       });
 
       const child2 = taskService.create({
+        created_by: 'test-creator',
         title: 'Child 2',
         status: 'idle',
         parent_task_id: parent.id,
@@ -240,35 +261,41 @@ describe('Parent Status Propagation', () => {
     it('should propagate status changes through multiple levels', () => {
       // Create 3-level hierarchy
       const grandparent = taskService.create({
+        created_by: 'test-creator',
         title: 'Grandparent',
         status: 'idle',
       });
 
       const parent1 = taskService.create({
+        created_by: 'test-creator',
         title: 'Parent 1',
         status: 'idle',
         parent_task_id: grandparent.id,
       });
 
       const parent2 = taskService.create({
+        created_by: 'test-creator',
         title: 'Parent 2',
         status: 'idle',
         parent_task_id: grandparent.id,
       });
 
       const child1 = taskService.create({
+        created_by: 'test-creator',
         title: 'Child 1',
         status: 'idle',
         parent_task_id: parent1.id,
       });
 
       const child2 = taskService.create({
+        created_by: 'test-creator',
         title: 'Child 2',
         status: 'idle',
         parent_task_id: parent1.id,
       });
 
       const child3 = taskService.create({
+        created_by: 'test-creator',
         title: 'Child 3',
         status: 'idle',
         parent_task_id: parent2.id,
@@ -302,17 +329,20 @@ describe('Parent Status Propagation', () => {
 
     it('should handle mixed status across parent siblings', () => {
       const grandparent = taskService.create({
+        created_by: 'test-creator',
         title: 'Grandparent',
         status: 'idle',
       });
 
       const parent1 = taskService.create({
+        created_by: 'test-creator',
         title: 'Parent 1',
         status: 'idle',
         parent_task_id: grandparent.id,
       });
 
       const parent2 = taskService.create({
+        created_by: 'test-creator',
         title: 'Parent 2',
         status: 'idle',
         parent_task_id: grandparent.id,
@@ -320,12 +350,14 @@ describe('Parent Status Propagation', () => {
 
       // Parent 1 children - all complete
       taskService.create({
+        created_by: 'test-creator',
         title: 'Child 1-1',
         status: 'complete',
         parent_task_id: parent1.id,
       });
 
       taskService.create({
+        created_by: 'test-creator',
         title: 'Child 1-2',
         status: 'complete',
         parent_task_id: parent1.id,
@@ -333,12 +365,14 @@ describe('Parent Status Propagation', () => {
 
       // Parent 2 children - one working
       taskService.create({
+        created_by: 'test-creator',
         title: 'Child 2-1',
         status: 'working',
         parent_task_id: parent2.id,
       });
 
       taskService.create({
+        created_by: 'test-creator',
         title: 'Child 2-2',
         status: 'idle',
         parent_task_id: parent2.id,
@@ -356,6 +390,7 @@ describe('Parent Status Propagation', () => {
   describe('Edge cases', () => {
     it('should not change parent status when parent has no children', () => {
       const parent = taskService.create({
+        created_by: 'test-creator',
         title: 'Parent with no children',
         status: 'working',
       });
@@ -367,23 +402,27 @@ describe('Parent Status Propagation', () => {
 
     it('should handle parent status when only some children are archived', () => {
       const parent = taskService.create({
+        created_by: 'test-creator',
         title: 'Parent Task',
         status: 'idle',
       });
 
       const child1 = taskService.create({
+        created_by: 'test-creator',
         title: 'Child 1',
         status: 'complete',
         parent_task_id: parent.id,
       });
 
       const child2 = taskService.create({
+        created_by: 'test-creator',
         title: 'Child 2',
         status: 'working',
         parent_task_id: parent.id,
       });
 
       const child3 = taskService.create({
+        created_by: 'test-creator',
         title: 'Child 3',
         status: 'idle',
         parent_task_id: parent.id,

@@ -36,11 +36,13 @@ describe('Task Blocking Feature', () => {
   describe('Creating tasks with blocking', () => {
     it('should create a task with blocked_by_task_id', () => {
       const blockingTask = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocking Task',
         description: 'This task blocks another',
       });
 
       const blockedTask = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocked Task',
         description: 'This task is blocked',
         blocked_by_task_id: blockingTask.id,
@@ -53,6 +55,7 @@ describe('Task Blocking Feature', () => {
     it('should throw error if blocking task does not exist', () => {
       expect(() => {
         taskService.create({
+          created_by: 'test-creator',
           title: 'Blocked Task',
           blocked_by_task_id: 999,
         });
@@ -61,6 +64,7 @@ describe('Task Blocking Feature', () => {
 
     it('should allow creating task without blocked_by_task_id', () => {
       const task = taskService.create({
+        created_by: 'test-creator',
         title: 'Normal Task',
       });
 
@@ -71,8 +75,8 @@ describe('Task Blocking Feature', () => {
 
   describe('Updating tasks with blocking', () => {
     it('should allow setting blocked_by_task_id on existing task', () => {
-      const blockingTask = taskService.create({ title: 'Blocker' });
-      const task = taskService.create({ title: 'Task' });
+      const blockingTask = taskService.create({ created_by: 'test-creator', title: 'Blocker' });
+      const task = taskService.create({ created_by: 'test-creator', title: 'Task' });
 
       const updated = taskService.update(task.id, {
         blocked_by_task_id: blockingTask.id,
@@ -83,8 +87,9 @@ describe('Task Blocking Feature', () => {
     });
 
     it('should allow clearing blocked_by_task_id', () => {
-      const blockingTask = taskService.create({ title: 'Blocker' });
+      const blockingTask = taskService.create({ created_by: 'test-creator', title: 'Blocker' });
       const task = taskService.create({
+        created_by: 'test-creator',
         title: 'Task',
         blocked_by_task_id: blockingTask.id,
       });
@@ -98,7 +103,7 @@ describe('Task Blocking Feature', () => {
     });
 
     it('should prevent task from blocking itself', () => {
-      const task = taskService.create({ title: 'Task' });
+      const task = taskService.create({ created_by: 'test-creator', title: 'Task' });
 
       expect(() => {
         taskService.update(task.id, {
@@ -108,8 +113,9 @@ describe('Task Blocking Feature', () => {
     });
 
     it('should prevent circular blocking (A blocks B, B blocks A)', () => {
-      const taskA = taskService.create({ title: 'Task A' });
+      const taskA = taskService.create({ created_by: 'test-creator', title: 'Task A' });
       const taskB = taskService.create({
+        created_by: 'test-creator',
         title: 'Task B',
         blocked_by_task_id: taskA.id,
       });
@@ -122,7 +128,7 @@ describe('Task Blocking Feature', () => {
     });
 
     it('should throw error if blocking task does not exist', () => {
-      const task = taskService.create({ title: 'Task' });
+      const task = taskService.create({ created_by: 'test-creator', title: 'Task' });
 
       expect(() => {
         taskService.update(task.id, {
@@ -135,10 +141,12 @@ describe('Task Blocking Feature', () => {
   describe('Blocking state computation', () => {
     it('should mark task as blocked when blocking task is idle', () => {
       const blockingTask = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocker',
         status: 'idle',
       });
       const blockedTask = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocked',
         blocked_by_task_id: blockingTask.id,
       });
@@ -148,10 +156,12 @@ describe('Task Blocking Feature', () => {
 
     it('should mark task as blocked when blocking task is working', () => {
       const blockingTask = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocker',
         status: 'working',
       });
       const blockedTask = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocked',
         blocked_by_task_id: blockingTask.id,
       });
@@ -161,10 +171,12 @@ describe('Task Blocking Feature', () => {
 
     it('should mark task as unblocked when blocking task is complete', () => {
       const blockingTask = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocker',
         status: 'complete',
       });
       const blockedTask = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocked',
         blocked_by_task_id: blockingTask.id,
       });
@@ -174,10 +186,12 @@ describe('Task Blocking Feature', () => {
 
     it('should update blocking state when blocking task status changes', () => {
       const blockingTask = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocker',
         status: 'idle',
       });
       const blockedTask = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocked',
         blocked_by_task_id: blockingTask.id,
       });
@@ -196,10 +210,12 @@ describe('Task Blocking Feature', () => {
 
     it('should re-block task when blocking task reopens', () => {
       const blockingTask = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocker',
         status: 'complete',
       });
       const blockedTask = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocked',
         blocked_by_task_id: blockingTask.id,
       });
@@ -218,8 +234,9 @@ describe('Task Blocking Feature', () => {
 
   describe('Foreign key behavior', () => {
     it('should set blocked_by_task_id to null when blocking task is deleted', () => {
-      const blockingTask = taskService.create({ title: 'Blocker' });
+      const blockingTask = taskService.create({ created_by: 'test-creator', title: 'Blocker' });
       const blockedTask = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocked',
         blocked_by_task_id: blockingTask.id,
       });
@@ -234,8 +251,9 @@ describe('Task Blocking Feature', () => {
     });
 
     it('should preserve blocked_by_task_id when blocking task is archived', () => {
-      const blockingTask = taskService.create({ title: 'Blocker' });
+      const blockingTask = taskService.create({ created_by: 'test-creator', title: 'Blocker' });
       const blockedTask = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocked',
         blocked_by_task_id: blockingTask.id,
       });
@@ -251,12 +269,14 @@ describe('Task Blocking Feature', () => {
 
   describe('Edge cases', () => {
     it('should allow blocking task to be a subtask', () => {
-      const parent = taskService.create({ title: 'Parent' });
+      const parent = taskService.create({ created_by: 'test-creator', title: 'Parent' });
       const blockingSubtask = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocking Subtask',
         parent_task_id: parent.id,
       });
       const blockedTask = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocked Task',
         blocked_by_task_id: blockingSubtask.id,
       });
@@ -266,12 +286,14 @@ describe('Task Blocking Feature', () => {
     });
 
     it('should allow blocked task to be a parent', () => {
-      const blockingTask = taskService.create({ title: 'Blocker' });
+      const blockingTask = taskService.create({ created_by: 'test-creator', title: 'Blocker' });
       const parentTask = taskService.create({
+        created_by: 'test-creator',
         title: 'Parent Task',
         blocked_by_task_id: blockingTask.id,
       });
       const subtask = taskService.create({
+        created_by: 'test-creator',
         title: 'Subtask',
         parent_task_id: parentTask.id,
       });
@@ -282,12 +304,14 @@ describe('Task Blocking Feature', () => {
     });
 
     it('should allow chain blocking (A→B→C)', () => {
-      const taskA = taskService.create({ title: 'Task A' });
+      const taskA = taskService.create({ created_by: 'test-creator', title: 'Task A' });
       const taskB = taskService.create({
+        created_by: 'test-creator',
         title: 'Task B',
         blocked_by_task_id: taskA.id,
       });
       const taskC = taskService.create({
+        created_by: 'test-creator',
         title: 'Task C',
         blocked_by_task_id: taskB.id,
       });
@@ -301,16 +325,18 @@ describe('Task Blocking Feature', () => {
 
   describe('getBlockedTasks helper', () => {
     it('should return all tasks blocked by a specific task', () => {
-      const blocker = taskService.create({ title: 'Blocker' });
+      const blocker = taskService.create({ created_by: 'test-creator', title: 'Blocker' });
       const blocked1 = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocked 1',
         blocked_by_task_id: blocker.id,
       });
       const blocked2 = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocked 2',
         blocked_by_task_id: blocker.id,
       });
-      const _unrelated = taskService.create({ title: 'Unrelated' });
+      const _unrelated = taskService.create({ created_by: 'test-creator', title: 'Unrelated' });
 
       const blockedTasks = taskService.getBlockedTasks(blocker.id);
 
@@ -319,19 +345,21 @@ describe('Task Blocking Feature', () => {
     });
 
     it('should return empty array if no tasks are blocked', () => {
-      const task = taskService.create({ title: 'Task' });
+      const task = taskService.create({ created_by: 'test-creator', title: 'Task' });
       const blockedTasks = taskService.getBlockedTasks(task.id);
 
       expect(blockedTasks).toHaveLength(0);
     });
 
     it('should not include archived tasks', () => {
-      const blocker = taskService.create({ title: 'Blocker' });
+      const blocker = taskService.create({ created_by: 'test-creator', title: 'Blocker' });
       const blocked1 = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocked 1',
         blocked_by_task_id: blocker.id,
       });
       const blocked2 = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocked 2',
         blocked_by_task_id: blocker.id,
       });
@@ -350,12 +378,14 @@ describe('Task Blocking Feature', () => {
     it('should support typical blocking workflow', () => {
       // Create a task that needs to be done first
       const prerequisite = taskService.create({
+        created_by: 'test-creator',
         title: 'Setup Database',
         status: 'idle',
       });
 
       // Create a task that depends on it
       const dependent = taskService.create({
+        created_by: 'test-creator',
         title: 'Run Migrations',
         blocked_by_task_id: prerequisite.id,
       });
@@ -380,8 +410,9 @@ describe('Task Blocking Feature', () => {
     });
 
     it('should support manual unblocking (workaround found)', () => {
-      const blocker = taskService.create({ title: 'Blocker' });
+      const blocker = taskService.create({ created_by: 'test-creator', title: 'Blocker' });
       const blocked = taskService.create({
+        created_by: 'test-creator',
         title: 'Blocked',
         blocked_by_task_id: blocker.id,
       });
