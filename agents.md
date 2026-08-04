@@ -314,6 +314,73 @@ Available options:
 How would you like me to proceed?
 ```
 
+## Deployment
+
+### Server Deployment (blue-remote)
+
+The TinyTask MCP server runs in a Docker container on `blue-remote.tail79f797.ts.net`.
+
+**Steps to deploy:**
+
+1. **Push changes to GitHub first** — blue-remote pulls from the remote, not your local:
+   ```bash
+   # Ensure github.com is in known_hosts (fresh containers may lack it)
+   ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+   git push origin <branch-name>
+   ```
+
+2. **Update the repo on blue-remote:**
+   ```bash
+   ssh eo@blue-remote.tail79f797.ts.net "cd ~/config/tinytask/tinytask-mcp && \
+     git fetch origin && \
+     git checkout <branch-name> && \
+     git pull origin <branch-name>"
+   ```
+
+3. **Rebuild the Docker image (use `--no-cache` to pick up code changes):**
+   ```bash
+   ssh eo@blue-remote.tail79f797.ts.net "cd ~/config/tinytask/tinytask-mcp && \
+     docker compose build --no-cache"
+   ```
+
+4. **Restart the container:**
+   ```bash
+   ssh eo@blue-remote.tail79f797.ts.net "cd ~/config/tinytask/tinytask-mcp && \
+     docker compose down && \
+     docker compose up -d"
+   ```
+
+5. **Verify health:**
+   ```bash
+   ssh eo@blue-remote.tail79f797.ts.net "curl -s http://localhost:3000/health"
+   ```
+
+**Gotchas:**
+- Use `docker compose` (v2), not `docker-compose` (v1) — blue-remote only has v2.
+- Always use `--no-cache` when rebuilding after code changes, or Docker may use cached layers and skip the rebuild.
+- Check which branch the server is currently on with `git branch --show-current` before deploying — it may not be `main`.
+
+### CLI Deployment (all lab machines)
+
+The CLI deploy script builds standalone executables for 3 architectures and deploys to 7 machines.
+
+**To run:**
+```bash
+cd /enigma-home/repos/tinytask/tinytask-cli
+BRANCH=<branch-name> bash deploy.sh
+```
+
+**Gotchas:**
+- The deploy script defaults to `BRANCH=main`. Always pass `BRANCH=<your-branch>` as an env var if your changes are on a feature branch.
+- The script builds on remote hosts (blue-remote for Linux x86_64, m3x-remote for macOS ARM64) — those hosts must be reachable via SSH/Tailscale.
+- If a machine is offline, the script will skip it with a warning — check `--check` mode to see what's reachable.
+
+**Check current versions on all machines:**
+```bash
+cd /enigma-home/repos/tinytask/tinytask-cli
+bash deploy.sh --check
+```
+
 ## Summary
 
 This is a well-structured TypeScript MCP server project. Key focus areas:
