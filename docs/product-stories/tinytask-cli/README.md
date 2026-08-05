@@ -153,7 +153,7 @@ tinytask config set url http://localhost:3000/mcp
 # Add production profile
 tinytask config profile add prod \
   --url https://prod.example.com/mcp \
-  --default-agent prod-agent
+  --agent prod-agent
 
 # Use profile
 tinytask --profile prod task list

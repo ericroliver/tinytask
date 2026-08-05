@@ -364,7 +364,7 @@ const subtask = await client.createSubtask({
   parent_task_id: parent_id,
   title,
   description: options.description,
-  assigned_to: options.assignedTo || config.defaultAgent,
+  assigned_to: options.assignedTo || config.agent,
   priority: options.priority,
   tags,
   queue_name: options.queue,
@@ -499,7 +499,7 @@ export function createQueueCommands(program: Command): void {
 queue
   .command('view [agent]')
   .description('View task queue for an agent')
-  .option('--mine', 'View my queue (uses default agent)')
+  .option('--mine', 'View my queue (uses agent identity)')
   .option('-s, --status <status>', 'Filter by status')
   .action(viewAgentQueueAction);
 ```
@@ -690,7 +690,7 @@ queue
 const task = await client.createTask({
   title,
   description: options.description,
-  assigned_to: options.assignedTo || config.defaultAgent,
+  assigned_to: options.assignedTo || config.agent,
   created_by: options.createdBy,
   priority: options.priority,
   status: options.status,

@@ -69,12 +69,21 @@ export function createSubtaskCommands(program: Command): void {
           ? options.tags.split(',').map((t: string) => t.trim())
           : undefined;
 
+        const createdBy = options.createdBy || config.agent;
+        if (!createdBy) {
+          console.error(
+            chalk.red('Error: Agent identity is required. Use --created-by <agent>')
+          );
+          console.error(chalk.gray('Or set the TKO_AGENT environment variable'));
+          process.exit(1);
+        }
+
         const subtask = await client.createSubtask({
           parent_task_id: parent_id,
           title,
           description,
-          assigned_to: options.assignedTo || config.defaultAgent,
-          created_by: options.createdBy || config.defaultAgent,
+          assigned_to: options.assignedTo || undefined,
+          created_by: createdBy,
           priority: options.priority,
           tags,
           queue_name: options.queue,

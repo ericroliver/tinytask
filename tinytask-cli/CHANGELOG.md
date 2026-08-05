@@ -5,6 +5,26 @@ All notable changes to the TinyTask CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-08-05
+
+### Breaking Changes
+- **Removed `defaultAgent` config field** — replaced by `agent`. Update your config: `tinytask config set agent <name>`.
+- **`assigned_to` no longer defaults to agent identity** — tasks are unassigned unless explicitly specified with `-a <agent>`.
+- **`created_by` is now required for task creation** — set `TKO_AGENT` env var or pass `--created-by <agent>`.
+- **`--default-agent` flag removed from profile add** — use `--agent` instead.
+- **`TINYTASK_AGENT` env var deprecated** — use `TKO_AGENT`. Both work, `TKO_AGENT` takes precedence.
+
+### Changed
+- Agent identity resolution: `--created-by` flag > `TKO_AGENT` env var > `TINYTASK_AGENT` env var > config `agent` field
+- Error messages updated to reference `TKO_AGENT` instead of `defaultAgent`
+- Config schema: `defaultAgent` → `agent` in both `ConfigSchema` and `ProfileSchema`
+
+### Migration
+1. Set `TKO_AGENT` in your agent process environment
+2. Update config: `tinytask config set agent <your-agent-name>` (old `defaultAgent` is ignored)
+3. Update profiles: `tinytask config profile add --name <n> -u <url> --agent <name>`
+4. Scripts relying on `assigned_to` defaulting to agent identity must now pass `-a <agent>` explicitly
+
 ## [0.2.2] - 2026-01-20
 
 ### Fixed

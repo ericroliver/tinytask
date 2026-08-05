@@ -269,6 +269,8 @@ tinytask l delete 5 --yes
 
 ### Configuration Commands
 
+> **Agent identity:** Set `TKO_AGENT` in your environment. Used as `created_by` for tasks, comments, links. Alternatively, pass `--created-by <agent>` per command, or `tinytask config set agent <your-agent>`. `assigned_to` has no default — tasks are unassigned unless explicitly assigned.
+
 #### Initialize Config
 
 ```bash
@@ -286,7 +288,7 @@ tinytask config show
 
 ```bash
 tinytask config set url http://localhost:3000/mcp
-tinytask config set defaultAgent alice
+tinytask config set agent alice
 tinytask config set outputFormat json
 ```
 
@@ -294,14 +296,14 @@ tinytask config set outputFormat json
 
 ```bash
 tinytask config get url
-tinytask config get defaultAgent
+tinytask config get agent
 ```
 
 #### Profile Management
 
 ```bash
 # Add profile
-tinytask config profile add staging --url https://staging.example.com/mcp --default-agent staging-bot
+tinytask config profile add staging --url https://staging.example.com/mcp --agent staging-bot
 
 # List profiles
 tinytask config profile list

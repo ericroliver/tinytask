@@ -33,7 +33,7 @@ export function createQueueCommand(program: Command): void {
     .alias('q')
     .description('View task queue for an agent')
     .option('-s, --status <status>', 'Filter by status')
-    .option('--mine', 'View my queue (uses default agent from config)')
+    .option('--mine', 'View my queue (uses agent identity from config)')
     .action(async (agent: string | undefined, options, command) => {
       try {
         const config = await loadConfig({
@@ -44,9 +44,9 @@ export function createQueueCommand(program: Command): void {
         // Determine agent name
         let agentName = agent;
         if (options.mine || !agentName) {
-          agentName = config.defaultAgent;
+          agentName = config.agent;
           if (!agentName) {
-            console.error(chalk.red('Error: No agent specified and no default agent configured'));
+            console.error(chalk.red('Error: No agent specified and no agent identity configured'));
             console.error(chalk.gray('Use: tinytask queue <agent-name>'));
             console.error(chalk.gray('Or: tinytask config set default-agent <name>'));
             process.exit(1);
@@ -91,9 +91,9 @@ export function createSignupCommand(program: Command): void {
           outputFormat: command.optsWithGlobals().json ? 'json' : undefined,
         });
         
-        const agentName = options.agent || config.defaultAgent;
+        const agentName = options.agent || config.agent;
         if (!agentName) {
-          console.error(chalk.red('Error: No agent specified and no default agent configured'));
+          console.error(chalk.red('Error: No agent specified and no agent identity configured'));
           console.error(chalk.gray('Use: tinytask signup --agent <name>'));
           console.error(chalk.gray('Or: tinytask config set default-agent <name>'));
           process.exit(1);
@@ -151,9 +151,9 @@ export function createMoveCommand(program: Command): void {
           outputFormat: command.optsWithGlobals().json ? 'json' : undefined,
         });
         
-        const fromAgent = options.from || config.defaultAgent;
+        const fromAgent = options.from || config.agent;
         if (!fromAgent) {
-          console.error(chalk.red('Error: No current agent specified and no default agent configured'));
+          console.error(chalk.red('Error: No current agent specified and no agent identity configured'));
           console.error(chalk.gray('Use: tinytask move <id> <to-agent> --from <current-agent>'));
           console.error(chalk.gray('Or: tinytask config set default-agent <name>'));
           process.exit(1);
@@ -216,7 +216,7 @@ export function createCommentCommands(program: Command): void {
         const result = await client.addComment(
           parseInt(taskId),
           content,
-          options.createdBy || config.defaultAgent
+          options.createdBy || config.agent
         );
         
         if (command.optsWithGlobals().json) {
@@ -337,7 +337,7 @@ export function createLinkCommands(program: Command): void {
           parseInt(taskId),
           url,
           options.description,
-          options.createdBy || config.defaultAgent
+          options.createdBy || config.agent
         );
         
         if (command.optsWithGlobals().json) {

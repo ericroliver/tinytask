@@ -56,8 +56,11 @@ export async function loadConfig(options: {
   if (process.env.TINYTASK_URL) {
     config.url = process.env.TINYTASK_URL;
   }
-  if (process.env.TINYTASK_AGENT) {
-    config.defaultAgent = process.env.TINYTASK_AGENT;
+  // Agent identity: TKO_AGENT takes precedence over TINYTASK_AGENT
+  if (process.env.TKO_AGENT) {
+    config.agent = process.env.TKO_AGENT;
+  } else if (process.env.TINYTASK_AGENT) {
+    config.agent = process.env.TINYTASK_AGENT;
   }
   if (process.env.TINYTASK_FORMAT) {
     config.outputFormat = process.env.TINYTASK_FORMAT as 'table' | 'json' | 'csv' | 'compact';

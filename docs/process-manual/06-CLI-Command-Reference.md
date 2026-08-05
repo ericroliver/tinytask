@@ -31,10 +31,16 @@ tinytask config init --force
 tinytask config set url http://your-server:3000/mcp
 ```
 
-#### Set Default Agent
+#### Set Agent Identity
+
+Set `TKO_AGENT` in your environment (preferred), or use `tinytask config set agent <name>`. This is used as `created_by` for tasks, comments, and links.
 
 ```bash
-tinytask config set defaultAgent tko-sword
+# Option 1: Environment variable (preferred)
+export TKO_AGENT=tko-sword
+
+# Option 2: Config file
+tinytask config set agent tko-sword
 ```
 
 ### 1.2 Global Options
@@ -58,12 +64,13 @@ tinytask task list --profile staging
 
 ### 1.3 Environment Variables
 
-The CLI reads these environment variables. CLI options take priority over environment variables, which take priority over config file values.
+The CLI reads these environment variables. CLI options take priority over environment variables, which take priority over config file values. `TKO_AGENT` takes precedence over `TINYTASK_AGENT` if both are set.
 
 | Variable | Description |
 |---|---|
 | `TINYTASK_URL` | Server URL |
-| `TINYTASK_AGENT` | Default agent name |
+| `TKO_AGENT` | Agent identity — used for `created_by` on tasks, comments, links; `--from` on move; `--agent` on signup/queue view (preferred) |
+| `TINYTASK_AGENT` | Legacy alias for `TKO_AGENT` (backward compat) |
 | `TINYTASK_FORMAT` | Output format (`table`, `json`, `csv`, `compact`) |
 | `TINYTASK_NO_COLOR` | Set to `true` to disable color |
 | `TINYTASK_TIMEOUT` | Request timeout in milliseconds |
@@ -75,14 +82,14 @@ The config file is at `~/.tinytaskrc.json`. Structure:
 ```json
 {
   "url": "http://localhost:3000/mcp",
-  "defaultAgent": "tko-sword",
+  "agent": "tko-sword",
   "outputFormat": "table",
   "colorOutput": true,
   "timeout": 30000,
   "profiles": {
     "staging": {
       "url": "https://staging.example.com/mcp",
-      "defaultAgent": "staging-bot"
+      "agent": "staging-bot"
     }
   },
   "activeProfile": "staging"
@@ -114,8 +121,8 @@ tinytask task create <title>
 | Option | Short | Type | Default | Description |
 |---|---|---|---|---|
 | `--description <text>` | `-d` | string | — | Task description |
-| `--assigned-to <agent>` | `-a` | string | `defaultAgent` from config | Agent to assign the task to |
-| `--created-by <agent>` | `-c` | string | — | Agent who created the task |
+| `--assigned-to <agent>` | `-a` | string | — (unassigned) | Agent to assign the task to |
+| `--created-by <agent>` | `-c` | string | `TKO_AGENT` env var or config `agent` | Agent who created the task (required) |
 | `--priority <number>` | `-p` | integer | `0` | Task priority |
 | `--tags <tags>` | `-t` | string | — | Comma-separated tag list |
 | `--parent <id>` | — | integer | — | Parent task ID (creates as subtask) |
@@ -311,7 +318,7 @@ Creates a new subtask under the specified parent task. The subtask inherits the 
 | Option | Short | Type | Description |
 |---|---|---|---|
 | `--description <text>` | `-d` | string | Subtask description |
-| `--assigned-to <agent>` | `-a` | string | Agent to assign the subtask to (defaults to `defaultAgent`) |
+| `--assigned-to <agent>` | `-a` | string | Agent to assign the subtask to (no default — unassigned if not specified) |
 | `--priority <number>` | `-p` | integer | Priority (default: `0`) |
 | `--tags <tags>` | `-t` | string | Comma-separated tags |
 | `--queue <name>` | `-q` | string | Override queue (defaults to parent's queue) |
@@ -427,7 +434,7 @@ Displays all tasks assigned to an agent, organized by queue.
 | Option | Short | Description |
 |---|---|---|
 | `--status <status>` | `-s` | Filter by status |
-| `--mine` | — | View your own queue (uses `defaultAgent` from config) |
+| `--mine` | — | View your own queue (uses `agent` from config) |
 
 **Examples:**
 
@@ -435,7 +442,7 @@ Displays all tasks assigned to an agent, organized by queue.
 # View a specific agent's queue
 tinytask queue view tko-sword
 
-# View your own queue (uses defaultAgent)
+# View your own queue (uses TKO_AGENT)
 tinytask queue view --mine
 
 # Filter by status
@@ -612,12 +619,12 @@ Claims the next available idle task from the agent's queue. The task's status is
 
 | Option | Short | Description |
 |---|---|---|
-| `--agent <name>` | `-a` | Agent name (defaults to `defaultAgent` from config) |
+| `--agent <name>` | `-a` | Agent name (defaults to `agent` from config) |
 
 **Examples:**
 
 ```bash
-# Signup using defaultAgent from config
+# Signup using agent from config
 tinytask signup
 
 # Specify agent explicitly
@@ -639,7 +646,7 @@ Transfers a task from one agent to another. Automatically adds a comment to the 
 
 | Option | Short | Type | Default | Description |
 |---|---|---|---|---|
-| `--from <agent>` | `-f` | string | `defaultAgent` from config | Current agent (source) |
+| `--from <agent>` | `-f` | string | `agent` from config | Current agent (source) |
 | `--comment <text>` | `-m` | string | `"Task transferred"` | Handoff comment added to the task |
 
 **Examples:**
@@ -651,7 +658,7 @@ tinytask move 5 tko-shield
 # Specify source agent and custom comment
 tinytask move 5 tko-shield --from tko-sword --comment "Transferring for QA review"
 
-# Using default agent from config
+# Using TKO_AGENT from config
 tinytask move 5 tko-shield -m "Handing off for testing"
 ```
 
@@ -673,12 +680,12 @@ tinytask comment add <task-id> <content> [options]
 
 | Option | Description |
 |---|---|
-| `--created-by <agent>` | Comment author (defaults to `defaultAgent` from config) |
+| `--created-by <agent>` | Comment author (defaults to `agent` from config) |
 
 **Examples:**
 
 ```bash
-# Add a comment (uses defaultAgent as author)
+# Add a comment (uses TKO_AGENT as author)
 tinytask comment add 5 "Started working on this task"
 
 # Specify author explicitly
@@ -755,7 +762,7 @@ tinytask link add <task-id> <url> [options]
 | Option | Short | Description |
 |---|---|---|
 | `--description <text>` | `-d` | Link description |
-| `--created-by <agent>` | — | Link author (defaults to `defaultAgent` from config) |
+| `--created-by <agent>` | — | Link author (defaults to `agent` from config) |
 
 **Examples:**
 
@@ -877,7 +884,7 @@ Sets a configuration key to a value. Common keys:
 | Key | Description |
 |---|---|
 | `url` | Server URL |
-| `defaultAgent` | Default agent name |
+| `agent` | Agent identity |
 | `outputFormat` | Output format (`table`, `json`, `csv`, `compact`) |
 | `colorOutput` | Enable/disable color (`true`/`false`) |
 | `timeout` | Request timeout in milliseconds |
@@ -886,7 +893,7 @@ Sets a configuration key to a value. Common keys:
 
 ```bash
 tinytask config set url http://localhost:3000/mcp
-tinytask config set defaultAgent tko-sword
+tinytask config set agent tko-sword
 tinytask config set outputFormat json
 tinytask config set colorOutput false
 ```
@@ -901,7 +908,7 @@ tinytask config get <key>
 
 ```bash
 tinytask config get url
-tinytask config get defaultAgent
+tinytask config get agent
 ```
 
 ### 8.5 Profile Management
@@ -927,7 +934,7 @@ tinytask config profile add [options]
 
 | Option | Description |
 |---|---|
-| `--default-agent <agent>` | Default agent name for this profile |
+| `--agent <agent>` | Agent identity for this profile |
 
 **Example:**
 
@@ -935,7 +942,7 @@ tinytask config profile add [options]
 tinytask config profile add \
   --name staging \
   --server-url https://staging.example.com/mcp \
-  --default-agent staging-bot
+  --agent staging-bot
 ```
 
 #### List Profiles
@@ -958,7 +965,7 @@ tinytask config profile list
 tinytask config profile use <name>
 ```
 
-Sets the active profile. All subsequent commands will use this profile's server URL and default agent.
+Sets the active profile. All subsequent commands will use this profile's server URL and agent identity.
 
 **Example:**
 
@@ -1240,7 +1247,7 @@ tinytask subtask tree 5 --recursive
 | Show | `tinytask config show` |
 | Set | `tinytask config set <key> <value>` |
 | Get | `tinytask config get <key>` |
-| Profile Add | `tinytask config profile add -n <name> -u <url> [--default-agent <agent>]` |
+| Profile Add | `tinytask config profile add -n <name> -u <url> [--agent <agent>]` |
 | Profile List | `tinytask config profile list` |
 | Profile Use | `tinytask config profile use <name>` |
 | Profile Remove | `tinytask config profile remove <name>` |

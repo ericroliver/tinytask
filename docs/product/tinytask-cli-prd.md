@@ -317,7 +317,7 @@ $ tinytask comment add 78 "Target completion: end of sprint"
 ```json
 {
   "url": "http://localhost:3000/mcp",
-  "defaultAgent": "myname",
+  "agent": "myname",
   "outputFormat": "table",
   "colorOutput": true,
   "profiles": {
@@ -337,7 +337,7 @@ $ tinytask comment add 78 "Target completion: end of sprint"
 ### Environment Variables
 ```bash
 TINYTASK_URL=http://localhost:3000/mcp
-TINYTASK_AGENT=myname
+TKO_AGENT=myname
 TINYTASK_FORMAT=json  # table, json, csv, compact
 TINYTASK_NO_COLOR=true
 TINYTASK_PROFILE=prod

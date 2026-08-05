@@ -104,7 +104,7 @@ export function createConfigCommands(program: Command): void {
     .description('Add a new profile')
     .requiredOption('-n, --name <name>', 'Profile name')
     .requiredOption('-u, --server-url <url>', 'TinyTask server URL')
-    .option('--default-agent <agent>', 'Default agent name')
+    .option('--agent <agent>', 'Agent name')
     .action(async (options) => {
       try {
         const currentConfig = await loadConfig({});
@@ -115,7 +115,7 @@ export function createConfigCommands(program: Command): void {
 
         currentConfig.profiles[options.name] = {
           url: options.serverUrl,
-          defaultAgent: options.defaultAgent,
+          agent: options.agent,
         };
 
         await saveConfig(currentConfig);
@@ -146,8 +146,8 @@ export function createConfigCommands(program: Command): void {
           const active = name === currentConfig.activeProfile ? chalk.green(' (active)') : '';
           console.log(`  ${chalk.bold(name)}${active}`);
           console.log(`    URL: ${prof.url}`);
-          if (prof.defaultAgent) {
-            console.log(`    Default Agent: ${prof.defaultAgent}`);
+          if (prof.agent) {
+            console.log(`    Agent: ${prof.agent}`);
           }
         }
       } catch (error) {

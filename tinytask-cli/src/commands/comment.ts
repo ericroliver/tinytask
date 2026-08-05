@@ -61,11 +61,13 @@ export function createCommentCommands(program: Command): void {
           process.exit(1);
         }
 
+        const createdBy = options.createdBy || config.agent;
+
         const client = await ensureConnected(config.url);
         const result = await client.addComment(
           parseInt(taskId),
           resolvedContent,
-          options.createdBy || config.defaultAgent
+          createdBy
         );
 
         if (command.optsWithGlobals().json) {

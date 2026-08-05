@@ -156,7 +156,7 @@ description: <one-line description — NO agent names, keep generic>
 | Priority Levels | `low`–`urgent` with numeric ranges | Foundation §4.4, Conventions §4 |
 | Standard Queues | All queue definitions and responsible roles | Foundation §2.3, Conventions §6.1 |
 | Queue Transition Rules | Full transition table | Foundation §6, Conventions §6.2 |
-| CLI Setup | Installation, config init, server URL, default agent | CLI Ref §1.1–1.4 |
+| CLI Setup | Installation, config init, server URL, agent identity | CLI Ref §1.1–1.4 |
 | Task Commands | Create, get, update, list, delete, archive | CLI Ref §2, current-skill.md |
 | Subtask Commands | Create, list, tree, move | CLI Ref §3, current-skill.md |
 | Queue Commands | List, stats, tasks, add, remove, move, clear | CLI Ref §4, current-skill.md |

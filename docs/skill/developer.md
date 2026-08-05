@@ -16,6 +16,8 @@ description: Developer task management skill for development agents — task pic
 | Status discipline | `working` on start → `idle` on completion — **never `complete`** |
 | CLI reference | See `SKILL.md` for full command syntax |
 
+> **Agent identity:** Set `TKO_AGENT` in your environment. Used as `created_by` for tasks, comments, links. Alternatively, pass `--created-by <agent>` per command, or `tinytask config set agent <your-agent>`.
+
 ## Your Queues
 
 | Queue | Role | When |
