@@ -85,6 +85,15 @@ export interface ListCommentsParams {
   task_id: number;
 }
 
+export interface GetCommentParams {
+  id: number;
+}
+
+export interface MoveCommentParams {
+  comment_id: number;
+  to_task_id: number;
+}
+
 // Link handler parameter types
 export interface AddLinkParams {
   task_id: number;

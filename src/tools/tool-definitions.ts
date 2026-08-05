@@ -165,6 +165,15 @@ export const toolSchemas = {
     task_id: z.coerce.number().describe('Task ID'),
   }),
 
+  get_comment: z.object({
+    id: z.coerce.number().describe('Comment ID'),
+  }),
+
+  move_comment: z.object({
+    comment_id: z.coerce.number().describe('Comment ID to move'),
+    to_task_id: z.coerce.number().describe('Target task ID to move the comment to'),
+  }),
+
   // Link tools
   add_link: z.object({
     task_id: z.coerce.number().describe('Task ID'),
@@ -409,6 +418,16 @@ export const toolDefinitions = [
     name: 'list_comments',
     description: 'List all comments for a task',
     inputSchema: zodToJsonSchema(toolSchemas.list_comments),
+  },
+  {
+    name: 'get_comment',
+    description: 'Get a single comment by ID',
+    inputSchema: zodToJsonSchema(toolSchemas.get_comment),
+  },
+  {
+    name: 'move_comment',
+    description: 'Move a comment to a different task, leaving a record on the original task',
+    inputSchema: zodToJsonSchema(toolSchemas.move_comment),
   },
 
   // Link tools

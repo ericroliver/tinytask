@@ -114,10 +114,14 @@ export class CompactFormatter implements Formatter {
     // Comments (shown when present, e.g. from `task get`)
     if (Array.isArray(t.comments) && t.comments.length > 0) {
       const lines = [result];
-      t.comments.forEach((comment: unknown) => {
+      lines.push(this.options.color ? chalk.gray('─────────────────────────────────────────') : '─────────────────────────────────────────');
+      t.comments.forEach((comment: unknown, index: number) => {
         const c = comment as Record<string, unknown>;
         const author = c.created_by || 'Unknown';
         const date = new Date(String(c.created_at)).toLocaleString();
+        if (index > 0) {
+          lines.push(this.options.color ? chalk.gray('  ─────────') : '  ─────────');
+        }
         lines.push(
           this.options.color
             ? `  ${chalk.bold(`[${c.id}]`)} ${chalk.gray(author)} ${chalk.gray(`(${date})`)} - ${c.content}`

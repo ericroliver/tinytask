@@ -277,6 +277,24 @@ export class TinyTaskClient {
     this.parseResult(result, true);
   }
 
+  async getComment(id: number): Promise<unknown> {
+    this.ensureConnected();
+    const result = await this.client.callTool({
+      name: 'get_comment',
+      arguments: { id },
+    });
+    return this.parseResult(result);
+  }
+
+  async moveComment(commentId: number, toTaskId: number): Promise<unknown> {
+    this.ensureConnected();
+    const result = await this.client.callTool({
+      name: 'move_comment',
+      arguments: { comment_id: commentId, to_task_id: toTaskId },
+    });
+    return this.parseResult(result);
+  }
+
   // Link Operations
   async addLink(
     taskId: number,

@@ -121,6 +121,82 @@ export function createCommentCommands(program: Command): void {
       }
     });
 
+  // Get comment
+  comment
+    .command('get <comment-id>')
+    .description('Get a single comment by ID')
+    .action(async (commentId: string, _options, command) => {
+      try {
+        const config = await loadConfig({
+          url: command.optsWithGlobals().url,
+          outputFormat: command.optsWithGlobals().json ? 'json' : undefined,
+        });
+
+        if (!config.url) {
+          console.error(
+            chalk.red('Error: No server URL configured. Use --url or configure a profile.')
+          );
+          process.exit(1);
+        }
+
+        const client = await ensureConnected(config.url);
+        const result = await client.getComment(parseInt(commentId));
+
+        const formatter = createFormatter(config.outputFormat, {
+          color: config.colorOutput,
+          verbose: false,
+        });
+
+        console.log(formatter.format(result));
+      } catch (error) {
+        console.error(
+          chalk.red('Error getting comment:'),
+          error instanceof Error ? error.message : String(error)
+        );
+        process.exit(1);
+      }
+    });
+
+  // Move comment
+  comment
+    .command('move <comment-id> <to-task-id>')
+    .description('Move a comment to a different task, leaving a record on the original')
+    .action(async (commentId: string, toTaskId: string, _options, command) => {
+      try {
+        const config = await loadConfig({
+          url: command.optsWithGlobals().url,
+          outputFormat: command.optsWithGlobals().json ? 'json' : undefined,
+        });
+
+        if (!config.url) {
+          console.error(
+            chalk.red('Error: No server URL configured. Use --url or configure a profile.')
+          );
+          process.exit(1);
+        }
+
+        const client = await ensureConnected(config.url);
+        const result = await client.moveComment(parseInt(commentId), parseInt(toTaskId));
+
+        if (command.optsWithGlobals().json) {
+          const formatter = createFormatter('json', { color: false, verbose: false });
+          console.log(formatter.format(result));
+        } else {
+          const newComment = result as Record<string, unknown>;
+          console.log(
+            chalk.green(`✓ Comment #${commentId} moved to task #${toTaskId}`)
+          );
+          console.log(chalk.gray(`  New comment ID: ${newComment.id}`));
+        }
+      } catch (error) {
+        console.error(
+          chalk.red('Error moving comment:'),
+          error instanceof Error ? error.message : String(error)
+        );
+        process.exit(1);
+      }
+    });
+
   // Update comment
   comment
     .command('update <comment-id> [content]')

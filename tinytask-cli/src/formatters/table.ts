@@ -159,10 +159,14 @@ export class TableFormatter implements Formatter {
 
     if (Array.isArray(task.comments) && task.comments.length > 0) {
       lines.push('');
+      lines.push(this.options.color ? chalk.gray('─────────────────────────────────────────') : '─────────────────────────────────────────');
       lines.push(this.options.color ? chalk.cyan.bold('Comments:') : 'Comments:');
-      task.comments.forEach((comment: unknown) => {
+      task.comments.forEach((comment: unknown, index: number) => {
         const c = comment as Record<string, unknown>;
         const date = this.formatDate(String(c.created_at));
+        if (index > 0) {
+          lines.push(this.options.color ? chalk.gray('  ─────────') : '  ─────────');
+        }
         lines.push(
           this.options.color
             ? `  ${chalk.bold(`[${c.id}]`)} ${c.created_by || 'Unknown'} ${chalk.gray(`(${date})`)}: ${c.content}`
