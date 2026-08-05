@@ -16,6 +16,21 @@ export class CompactFormatter implements Formatter {
       return this.formatComments(data as Record<string, unknown>);
     } else if (typeof data === 'object' && data !== null && 'task_id' in data && 'links' in data) {
       return this.formatLinks(data as Record<string, unknown>);
+    } else if (
+      typeof data === 'object' &&
+      data !== null &&
+      'content' in data &&
+      'task_id' in data &&
+      !('title' in data)
+    ) {
+      // Single comment object
+      const c = data as Record<string, unknown>;
+      const author = c.created_by || 'Unknown';
+      const date = new Date(String(c.created_at)).toLocaleString();
+      const header = `Comment #${c.id} (Task #${c.task_id}) - ${author} (${date})`;
+      const lines = [this.options.color ? chalk.cyan.bold(header) : header, ''];
+      lines.push(String(c.content));
+      return lines.join('\n');
     } else {
       return this.formatTask(data);
     }

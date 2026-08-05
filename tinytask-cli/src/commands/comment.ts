@@ -88,6 +88,7 @@ export function createCommentCommands(program: Command): void {
   // List comments
   comment
     .command('list <task-id>')
+    .alias('ls')
     .description('List all comments for a task')
     .action(async (taskId: string, _options, command) => {
       try {
