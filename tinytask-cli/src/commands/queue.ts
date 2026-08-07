@@ -30,11 +30,11 @@ export function createQueueCommands(program: Command): void {
         // Determine agent name
         let agentName = agent;
         if (options.mine || !agentName) {
-          agentName = config.defaultAgent;
+          agentName = config.agent;
           if (!agentName) {
-            console.error(chalk.red('Error: No agent specified and no default agent configured'));
+            console.error(chalk.red('Error: No agent specified and no agent configured'));
             console.error(chalk.gray('Use: tinytask queue view <agent-name>'));
-            console.error(chalk.gray('Or: tinytask config set defaultAgent <name>'));
+            console.error(chalk.gray('Or set the TKO_AGENT environment variable'));
             process.exit(1);
           }
         }

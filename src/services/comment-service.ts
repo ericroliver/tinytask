@@ -163,6 +163,59 @@ export class CommentService {
   }
 
   /**
+   * Move a comment to a different task.
+   * Creates a copy on the target task, then updates the original comment text
+   * to leave a record: "Comment moved to task <newTaskId> comment <newCommentId>".
+   * Returns the new comment data.
+   */
+  move(commentId: number, toTaskId: number): CommentData {
+    const result = this.db.transaction(() => {
+      // Fetch the original comment
+      const original = this.get(commentId);
+      if (!original) {
+        throw new Error(`Comment not found: ${commentId}`);
+      }
+
+      // Verify target task exists
+      const task = this.db.queryOne('SELECT id FROM tasks WHERE id = ?', [toTaskId]);
+      if (!task) {
+        throw new Error(`Target task not found: ${toTaskId}`);
+      }
+
+      // Create the copy on the target task
+      const insertResult = this.db.execute(
+        `INSERT INTO comments (task_id, content, created_by)
+         VALUES (?, ?, ?)`,
+        [toTaskId, original.content, original.created_by || null]
+      );
+
+      const newCommentId = insertResult.lastInsertRowid as number;
+      const newComment = this.db.queryOne<Comment>(
+        'SELECT * FROM comments WHERE id = ?',
+        [newCommentId]
+      );
+      if (!newComment) {
+        throw new Error('Failed to retrieve moved comment');
+      }
+
+      // Update the original comment to leave a record
+      this.db.execute(
+        'UPDATE comments SET content = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [`Comment moved to task ${toTaskId} comment ${newCommentId}`, commentId]
+      );
+
+      return this.parseComment(newComment);
+    });
+
+    this.emit(TaskEventType.CommentAdded, {
+      taskId: toTaskId,
+      comment: result,
+      ...(this.getTaskContext(toTaskId) ?? {}),
+    });
+    return result;
+  }
+
+  /**
    * List all comments for a task
    */
   listByTask(taskId: number): CommentData[] {

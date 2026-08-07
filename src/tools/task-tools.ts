@@ -10,7 +10,7 @@ export async function createTaskHandler(
     title: string;
     description?: string;
     assigned_to?: string;
-    created_by?: string;
+    created_by: string;
     priority?: number;
     tags?: string[];
     parent_task_id?: number;
@@ -48,6 +48,7 @@ export async function createSubtaskHandler(
     title: string;
     description?: string;
     assigned_to?: string;
+    created_by: string;
     priority?: number;
     tags?: string[];
     queue_name?: string;
@@ -73,6 +74,7 @@ export async function createSubtaskHandler(
       title: params.title,
       description: params.description,
       assigned_to: params.assigned_to,
+      created_by: params.created_by,
       priority: params.priority,
       tags: params.tags,
       queue_name: params.queue_name,

@@ -347,13 +347,13 @@ import { z } from 'zod';
 
 export const ConfigSchema = z.object({
   url: z.string().url().optional(),
-  defaultAgent: z.string().optional(),
+  agent: z.string().optional(),
   outputFormat: z.enum(['table', 'json', 'csv', 'compact']).default('table'),
   colorOutput: z.boolean().default(true),
   profiles: z.record(
     z.object({
       url: z.string().url(),
-      defaultAgent: z.string().optional(),
+      agent: z.string().optional(),
     })
   ).optional(),
 });
@@ -386,8 +386,8 @@ export async function loadConfig(profile?: string): Promise<Config> {
   if (process.env.TINYTASK_URL) {
     config.url = process.env.TINYTASK_URL;
   }
-  if (process.env.TINYTASK_AGENT) {
-    config.defaultAgent = process.env.TINYTASK_AGENT;
+  if (process.env.TKO_AGENT) {
+    config.agent = process.env.TKO_AGENT;
   }
   if (process.env.TINYTASK_FORMAT) {
     config.outputFormat = process.env.TINYTASK_FORMAT as any;

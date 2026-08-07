@@ -28,6 +28,8 @@ import {
   updateCommentHandler,
   deleteCommentHandler,
   listCommentsHandler,
+  getCommentHandler,
+  moveCommentHandler,
 } from './comment-tools.js';
 import {
   addLinkHandler,
@@ -62,6 +64,8 @@ import type {
   UpdateCommentParams,
   DeleteCommentParams,
   ListCommentsParams,
+  GetCommentParams,
+  MoveCommentParams,
   AddLinkParams,
   UpdateLinkParams,
   DeleteLinkParams,
@@ -177,6 +181,12 @@ export function registerToolHandlers(
           break;
         case 'list_comments':
           result = await listCommentsHandler(commentService, validatedArgs as ListCommentsParams);
+          break;
+        case 'get_comment':
+          result = await getCommentHandler(commentService, validatedArgs as GetCommentParams);
+          break;
+        case 'move_comment':
+          result = await moveCommentHandler(commentService, validatedArgs as MoveCommentParams);
           break;
 
         // Link tools

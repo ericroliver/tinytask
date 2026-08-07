@@ -69,7 +69,7 @@ describe('REST API Defect Fixes', () => {
     test('rejects string priority with 400', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test', priority: 'high' });
+        .send({ created_by: 'test-creator', title: 'test', priority: 'high' });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('priority');
@@ -78,7 +78,7 @@ describe('REST API Defect Fixes', () => {
     test('accepts numeric priority', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test', priority: 7 });
+        .send({ created_by: 'test-creator', title: 'test', priority: 7 });
 
       expect(res.status).toBe(201);
       expect(res.body.priority).toBe(7);
@@ -88,7 +88,7 @@ describe('REST API Defect Fixes', () => {
     test('accepts undefined priority (defaults to 0)', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test' });
+        .send({ created_by: 'test-creator', title: 'test' });
 
       expect(res.status).toBe(201);
       expect(res.body.priority).toBe(0);
@@ -97,7 +97,7 @@ describe('REST API Defect Fixes', () => {
     test('rejects NaN with 400', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test', priority: NaN });
+        .send({ created_by: 'test-creator', title: 'test', priority: NaN });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('finite');
@@ -106,7 +106,7 @@ describe('REST API Defect Fixes', () => {
     test('rejects Infinity with 400', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test', priority: Infinity });
+        .send({ created_by: 'test-creator', title: 'test', priority: Infinity });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('finite');
@@ -119,7 +119,7 @@ describe('REST API Defect Fixes', () => {
     test('task timestamps are ISO 8601 format', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test' });
+        .send({ created_by: 'test-creator', title: 'test' });
 
       expect(res.status).toBe(201);
       expect(res.body.created_at).toMatch(ISO_8601_REGEX);
@@ -128,8 +128,8 @@ describe('REST API Defect Fixes', () => {
     });
 
     test('task list timestamps are ISO 8601 format', async () => {
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'test1' });
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'test2' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'test1' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'test2' });
 
       const res = await request(ctx.app).get('/api/v1/tasks');
 
@@ -141,7 +141,7 @@ describe('REST API Defect Fixes', () => {
     });
 
     test('comment timestamps are ISO 8601 format', async () => {
-      const taskRes = await request(ctx.app).post('/api/v1/tasks').send({ title: 'test' });
+      const taskRes = await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'test' });
       const taskId = taskRes.body.id;
 
       const res = await request(ctx.app)
@@ -154,7 +154,7 @@ describe('REST API Defect Fixes', () => {
     });
 
     test('archived task has ISO 8601 archived_at', async () => {
-      const taskRes = await request(ctx.app).post('/api/v1/tasks').send({ title: 'test' });
+      const taskRes = await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'test' });
       const taskId = taskRes.body.id;
 
       const res = await request(ctx.app).post(`/api/v1/tasks/${taskId}/archive`);
@@ -191,7 +191,7 @@ describe('REST API Defect Fixes', () => {
       // Create a task assigned to an agent
       const createRes = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'transfer test', assigned_to: 'agent-a' });
+        .send({ created_by: 'test-creator', title: 'transfer test', assigned_to: 'agent-a' });
 
       const taskId = createRes.body.id;
 
@@ -226,7 +226,7 @@ describe('REST API Defect Fixes', () => {
       // Create a task with tags assigned to an agent
       const createRes = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'transfer with tags', assigned_to: 'agent-a', tags: ['urgent', 'backend'] });
+        .send({ created_by: 'test-creator', title: 'transfer with tags', assigned_to: 'agent-a', tags: ['urgent', 'backend'] });
 
       const taskId = createRes.body.id;
 
@@ -252,7 +252,7 @@ describe('REST API Defect Fixes', () => {
     test('returns 400 (not 500) when wrong field name used', async () => {
       const createRes = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'queue test' });
+        .send({ created_by: 'test-creator', title: 'queue test' });
 
       const taskId = createRes.body.id;
 
@@ -269,7 +269,7 @@ describe('REST API Defect Fixes', () => {
     test('returns 400 when no body sent', async () => {
       const createRes = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'queue test' });
+        .send({ created_by: 'test-creator', title: 'queue test' });
 
       const taskId = createRes.body.id;
 
@@ -284,7 +284,7 @@ describe('REST API Defect Fixes', () => {
     test('works correctly with correct field name', async () => {
       const createRes = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'queue test' });
+        .send({ created_by: 'test-creator', title: 'queue test' });
 
       const taskId = createRes.body.id;
 
@@ -302,10 +302,10 @@ describe('REST API Defect Fixes', () => {
   describe('DEFECT-6: queue_name query parameter filter', () => {
     test('filters tasks by queue_name', async () => {
       // Create tasks in different queues
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task1', queue_name: 'dev' });
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task2', queue_name: 'qa' });
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task3', queue_name: 'dev' });
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task4', queue_name: 'prod' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task1', queue_name: 'dev' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task2', queue_name: 'qa' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task3', queue_name: 'dev' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task4', queue_name: 'prod' });
 
       // Filter by queue_name=dev
       const res = await request(ctx.app).get('/api/v1/tasks?queue_name=dev');
@@ -318,7 +318,7 @@ describe('REST API Defect Fixes', () => {
     });
 
     test('returns empty for non-existent queue', async () => {
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task1', queue_name: 'dev' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task1', queue_name: 'dev' });
 
       const res = await request(ctx.app).get('/api/v1/tasks?queue_name=nonexistent');
 
@@ -328,13 +328,13 @@ describe('REST API Defect Fixes', () => {
 
     test('parent_task_id filter works', async () => {
       // Create a parent task
-      const parentRes = await request(ctx.app).post('/api/v1/tasks').send({ title: 'parent' });
+      const parentRes = await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'parent' });
       const parentId = parentRes.body.id;
 
       // Create subtask
       await request(ctx.app)
         .post(`/api/v1/tasks/${parentId}/subtasks`)
-        .send({ title: 'subtask' });
+        .send({ created_by: 'test-creator', title: 'subtask' });
 
       // Filter by parent_task_id
       const res = await request(ctx.app).get(`/api/v1/tasks?parent_task_id=${parentId}`);
@@ -346,13 +346,13 @@ describe('REST API Defect Fixes', () => {
 
     test('exclude_subtasks filter works', async () => {
       // Create a parent task
-      const parentRes = await request(ctx.app).post('/api/v1/tasks').send({ title: 'parent' });
+      const parentRes = await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'parent' });
       const parentId = parentRes.body.id;
 
       // Create subtask
       await request(ctx.app)
         .post(`/api/v1/tasks/${parentId}/subtasks`)
-        .send({ title: 'subtask' });
+        .send({ created_by: 'test-creator', title: 'subtask' });
 
       // With exclude_subtasks=true, only top-level tasks
       const res = await request(ctx.app).get('/api/v1/tasks?exclude_subtasks=true');

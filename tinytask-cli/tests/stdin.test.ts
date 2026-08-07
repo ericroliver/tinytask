@@ -20,7 +20,7 @@ vi.mock('../src/client/connection.js', () => ({
 vi.mock('../src/config/loader.js', () => ({
   loadConfig: vi.fn().mockResolvedValue({
     url: 'http://localhost:3000/mcp',
-    defaultAgent: 'test-agent',
+    agent: 'test-agent',
     outputFormat: 'json',
     colorOutput: false,
   }),

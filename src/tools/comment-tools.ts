@@ -93,6 +93,71 @@ export async function deleteCommentHandler(commentService: CommentService, param
   }
 }
 
+export async function getCommentHandler(
+  commentService: CommentService,
+  params: { id: number }
+) {
+  try {
+    const comment = commentService.get(params.id);
+    if (!comment) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Comment not found: ${params.id}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(comment, null, 2),
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `Error getting comment: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+export async function moveCommentHandler(
+  commentService: CommentService,
+  params: { comment_id: number; to_task_id: number }
+) {
+  try {
+    const newComment = commentService.move(params.comment_id, params.to_task_id);
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(newComment, null, 2),
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `Error moving comment: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
 export async function listCommentsHandler(
   commentService: CommentService,
   params: { task_id: number }

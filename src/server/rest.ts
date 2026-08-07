@@ -139,6 +139,11 @@ function validateTaskBodyFields(body: Record<string, unknown>, isPatch: boolean)
     return 'assigned_to must be a string';
   }
 
+  // created_by: required for task creation (not for updates)
+  if (!isPatch && (!body.created_by || (typeof body.created_by === 'string' && body.created_by.trim().length === 0))) {
+    return 'created_by is required';
+  }
+
   // created_by: must be a string if provided
   if (body.created_by !== undefined && body.created_by !== null && !isString(body.created_by)) {
     return 'created_by must be a string';
@@ -789,6 +794,52 @@ export function createRestRouter(
       }
       commentService.delete(id);
       res.json({ success: true, id });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('not found')) {
+        res.status(404).json({ error: msg });
+      } else {
+        res.status(400).json({ error: msg });
+      }
+    }
+  });
+
+  // GET /api/v1/comments/:id — get_comment
+  router.get('/comments/:id', (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        res.status(400).json({ error: `Invalid comment ID: ${req.params.id}` });
+        return;
+      }
+
+      const comment = commentService.get(id);
+      if (!comment) {
+        res.status(404).json({ error: `Comment not found: ${id}` });
+        return;
+      }
+      res.json(comment);
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : String(e) });
+    }
+  });
+
+  // POST /api/v1/comments/:id/move — move_comment
+  router.post('/comments/:id/move', (req: Request, res: Response) => {
+    try {
+      const commentId = parseInt(req.params.id, 10);
+      if (isNaN(commentId)) {
+        res.status(400).json({ error: `Invalid comment ID: ${req.params.id}` });
+        return;
+      }
+
+      if (!req.body || typeof req.body.to_task_id !== 'number') {
+        res.status(400).json({ error: 'to_task_id is required and must be a number' });
+        return;
+      }
+
+      const newComment = commentService.move(commentId, req.body.to_task_id);
+      res.status(201).json(newComment);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes('not found')) {

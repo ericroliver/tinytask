@@ -16,6 +16,8 @@ description: Tester task management skill for QA agents — bug reporting, defec
 | Status discipline | `working` on start → `complete` on verified pass, or `idle` + kickback on fail |
 | CLI reference | See `SKILL.md` for full command syntax |
 
+> **Agent identity:** Set `TKO_AGENT` in your environment. Used as `created_by` for tasks, comments, links. Alternatively, pass `--created-by <agent>` per command, or `tinytask config set agent <your-agent>`.
+
 ## Your Queues
 
 | Queue | Role | When |

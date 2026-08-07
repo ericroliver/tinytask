@@ -159,10 +159,14 @@ export class TableFormatter implements Formatter {
 
     if (Array.isArray(task.comments) && task.comments.length > 0) {
       lines.push('');
+      lines.push(this.options.color ? chalk.gray('─────────────────────────────────────────') : '─────────────────────────────────────────');
       lines.push(this.options.color ? chalk.cyan.bold('Comments:') : 'Comments:');
-      task.comments.forEach((comment: unknown) => {
+      task.comments.forEach((comment: unknown, index: number) => {
         const c = comment as Record<string, unknown>;
         const date = this.formatDate(String(c.created_at));
+        if (index > 0) {
+          lines.push(this.options.color ? chalk.gray('  ─────────') : '  ─────────');
+        }
         lines.push(
           this.options.color
             ? `  ${chalk.bold(`[${c.id}]`)} ${c.created_by || 'Unknown'} ${chalk.gray(`(${date})`)}: ${c.content}`
@@ -390,6 +394,31 @@ export class TableFormatter implements Formatter {
     return str.substring(0, maxLen - 3) + '...';
   }
 
+  formatComment(comment: Record<string, unknown>): string {
+    const lines = [];
+    const id = comment.id as number;
+    const taskId = comment.task_id as number;
+    const author = comment.created_by || 'Unknown';
+    const content = String(comment.content);
+    const createdAt = this.formatDate(String(comment.created_at));
+    const updatedAt = this.formatDate(String(comment.updated_at));
+
+    lines.push(this.options.color ? chalk.cyan.bold(`Comment #${id}`) : `Comment #${id}`);
+    lines.push('');
+    lines.push(`${this.options.color ? chalk.gray('Task:') : 'Task:'}        #${taskId}`);
+    lines.push(`${this.options.color ? chalk.gray('Author:') : 'Author:'}     ${author}`);
+    lines.push(`${this.options.color ? chalk.gray('Created:') : 'Created:'}    ${createdAt}`);
+    if (updatedAt !== createdAt) {
+      lines.push(`${this.options.color ? chalk.gray('Updated:') : 'Updated:'}    ${updatedAt}`);
+    }
+    lines.push('');
+    lines.push(this.options.color ? chalk.gray('─────────────────────────────────────────') : '─────────────────────────────────────────');
+    lines.push('');
+    lines.push(content);
+
+    return lines.join('\n');
+  }
+
   format(data: unknown): string {
     // Auto-detect data type and format appropriately
     if (Array.isArray(data)) {
@@ -405,6 +434,15 @@ export class TableFormatter implements Formatter {
       return this.formatComments(data as Record<string, unknown>);
     } else if (typeof data === 'object' && data !== null && 'task_id' in data && 'links' in data) {
       return this.formatLinks(data as Record<string, unknown>);
+    } else if (
+      typeof data === 'object' &&
+      data !== null &&
+      'content' in data &&
+      'task_id' in data &&
+      !('title' in data)
+    ) {
+      // Single comment object
+      return this.formatComment(data as Record<string, unknown>);
     } else {
       return this.formatTask(data as Record<string, unknown>);
     }

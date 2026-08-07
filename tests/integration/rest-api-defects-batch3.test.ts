@@ -123,9 +123,9 @@ describe('REST API Defect Fixes — Batch 3 (#509-#510, #548-#554)', () => {
   describe('#510/#550: GET /api/v1/tasks?offset=N SQL syntax error', () => {
     test('offset=1 returns 200 (not SQL error)', async () => {
       // Create some tasks first
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task1' });
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task2' });
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task3' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task1' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task2' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task3' });
 
       const res = await request(ctx.app).get('/api/v1/tasks?offset=1');
 
@@ -136,8 +136,8 @@ describe('REST API Defect Fixes — Batch 3 (#509-#510, #548-#554)', () => {
     });
 
     test('offset=0 returns 200 with all tasks', async () => {
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task1' });
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task2' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task1' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task2' });
 
       const res = await request(ctx.app).get('/api/v1/tasks?offset=0');
 
@@ -146,9 +146,9 @@ describe('REST API Defect Fixes — Batch 3 (#509-#510, #548-#554)', () => {
     });
 
     test('offset without limit returns 200', async () => {
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task1' });
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task2' });
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task3' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task1' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task2' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task3' });
 
       const res = await request(ctx.app).get('/api/v1/tasks?offset=2');
 
@@ -157,9 +157,9 @@ describe('REST API Defect Fixes — Batch 3 (#509-#510, #548-#554)', () => {
     });
 
     test('offset with limit returns 200', async () => {
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task1' });
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task2' });
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task3' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task1' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task2' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task3' });
 
       const res = await request(ctx.app).get('/api/v1/tasks?limit=1&offset=1');
 
@@ -173,9 +173,9 @@ describe('REST API Defect Fixes — Batch 3 (#509-#510, #548-#554)', () => {
   describe('#510/#551: GET /api/v1/queues/:name/tasks?offset=N SQL syntax error', () => {
     test('offset=1 returns 200 (not SQL error)', async () => {
       // Create tasks in a queue
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task1', queue_name: 'dev' });
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task2', queue_name: 'dev' });
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task3', queue_name: 'dev' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task1', queue_name: 'dev' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task2', queue_name: 'dev' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task3', queue_name: 'dev' });
 
       const res = await request(ctx.app).get('/api/v1/queues/dev/tasks?offset=1');
 
@@ -185,9 +185,9 @@ describe('REST API Defect Fixes — Batch 3 (#509-#510, #548-#554)', () => {
     });
 
     test('offset without limit returns 200', async () => {
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task1', queue_name: 'dev' });
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task2', queue_name: 'dev' });
-      await request(ctx.app).post('/api/v1/tasks').send({ title: 'task3', queue_name: 'dev' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task1', queue_name: 'dev' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task2', queue_name: 'dev' });
+      await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'task3', queue_name: 'dev' });
 
       const res = await request(ctx.app).get('/api/v1/queues/dev/tasks?offset=2');
 
@@ -202,14 +202,14 @@ describe('REST API Defect Fixes — Batch 3 (#509-#510, #548-#554)', () => {
     let parentId: number;
 
     beforeEach(async () => {
-      const res = await request(ctx.app).post('/api/v1/tasks').send({ title: 'parent' });
+      const res = await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'parent' });
       parentId = res.body.id;
     });
 
     test('rejects string priority with 400', async () => {
       const res = await request(ctx.app)
         .post(`/api/v1/tasks/${parentId}/subtasks`)
-        .send({ title: 'subtask', priority: 'high' });
+        .send({ created_by: 'test-creator', title: 'subtask', priority: 'high' });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('priority');
@@ -218,7 +218,7 @@ describe('REST API Defect Fixes — Batch 3 (#509-#510, #548-#554)', () => {
     test('rejects boolean priority with 400', async () => {
       const res = await request(ctx.app)
         .post(`/api/v1/tasks/${parentId}/subtasks`)
-        .send({ title: 'subtask', priority: true });
+        .send({ created_by: 'test-creator', title: 'subtask', priority: true });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('priority');
@@ -227,7 +227,7 @@ describe('REST API Defect Fixes — Batch 3 (#509-#510, #548-#554)', () => {
     test('rejects null priority with 400', async () => {
       const res = await request(ctx.app)
         .post(`/api/v1/tasks/${parentId}/subtasks`)
-        .send({ title: 'subtask', priority: null });
+        .send({ created_by: 'test-creator', title: 'subtask', priority: null });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('priority');
@@ -236,7 +236,7 @@ describe('REST API Defect Fixes — Batch 3 (#509-#510, #548-#554)', () => {
     test('rejects string tags with 400', async () => {
       const res = await request(ctx.app)
         .post(`/api/v1/tasks/${parentId}/subtasks`)
-        .send({ title: 'subtask', tags: 'foo' });
+        .send({ created_by: 'test-creator', title: 'subtask', tags: 'foo' });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('tags');
@@ -245,7 +245,7 @@ describe('REST API Defect Fixes — Batch 3 (#509-#510, #548-#554)', () => {
     test('accepts valid integer priority', async () => {
       const res = await request(ctx.app)
         .post(`/api/v1/tasks/${parentId}/subtasks`)
-        .send({ title: 'subtask', priority: 7 });
+        .send({ created_by: 'test-creator', title: 'subtask', priority: 7 });
 
       expect(res.status).toBe(201);
       expect(res.body.priority).toBe(7);
@@ -254,7 +254,7 @@ describe('REST API Defect Fixes — Batch 3 (#509-#510, #548-#554)', () => {
     test('accepts valid array tags', async () => {
       const res = await request(ctx.app)
         .post(`/api/v1/tasks/${parentId}/subtasks`)
-        .send({ title: 'subtask', tags: ['bug', 'urgent'] });
+        .send({ created_by: 'test-creator', title: 'subtask', tags: ['bug', 'urgent'] });
 
       expect(res.status).toBe(201);
       expect(res.body.tags).toEqual(['bug', 'urgent']);
@@ -265,14 +265,17 @@ describe('REST API Defect Fixes — Batch 3 (#509-#510, #548-#554)', () => {
   describe('DEFECT-16: GET /tasks/:parentId/subtasks?include_archived=true', () => {
     test('include_archived=true returns archived subtasks', async () => {
       const parent = ctx.taskService.create({
+        created_by: 'test-creator',
         title: 'Parent',
         status: 'idle',
       });
       const child = ctx.taskService.createSubtask(parent.id, {
+        created_by: 'test-creator',
         title: 'Active Child',
         status: 'idle',
       });
       const archivedChild = ctx.taskService.createSubtask(parent.id, {
+        created_by: 'test-creator',
         title: 'Archived Child',
         status: 'idle',
       });
@@ -295,18 +298,22 @@ describe('REST API Defect Fixes — Batch 3 (#509-#510, #548-#554)', () => {
 
     test('include_archived=true works with recursive subtasks', async () => {
       const parent = ctx.taskService.create({
+        created_by: 'test-creator',
         title: 'Parent',
         status: 'idle',
       });
       const child = ctx.taskService.createSubtask(parent.id, {
+        created_by: 'test-creator',
         title: 'Child',
         status: 'idle',
       });
       const grandchild = ctx.taskService.createSubtask(child.id, {
+        created_by: 'test-creator',
         title: 'Grandchild',
         status: 'idle',
       });
       const archivedGrandchild = ctx.taskService.createSubtask(child.id, {
+        created_by: 'test-creator',
         title: 'Archived Grandchild',
         status: 'idle',
       });

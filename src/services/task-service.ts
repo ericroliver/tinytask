@@ -46,6 +46,11 @@ export class TaskService {
         throw new Error('Task title is required');
       }
 
+      // created_by is required for the stimuli system to work properly
+      if (!params.created_by || params.created_by.trim().length === 0) {
+        throw new Error('created_by is required');
+      }
+
       // Validate status if provided
       if (params.status && !this.isValidStatus(params.status)) {
         throw new Error(`Invalid status: ${params.status}`);

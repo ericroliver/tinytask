@@ -76,7 +76,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     test('rejects string tags with 400', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test', tags: 'foo' });
+        .send({ created_by: 'test-creator', title: 'test', tags: 'foo' });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('tags');
@@ -86,7 +86,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     test('rejects number tags with 400', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test', tags: 42 });
+        .send({ created_by: 'test-creator', title: 'test', tags: 42 });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('tags');
@@ -95,7 +95,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     test('rejects object tags with 400', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test', tags: { key: 'val' } });
+        .send({ created_by: 'test-creator', title: 'test', tags: { key: 'val' } });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('tags');
@@ -104,7 +104,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     test('accepts array of strings tags', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test', tags: ['foo', 'bar'] });
+        .send({ created_by: 'test-creator', title: 'test', tags: ['foo', 'bar'] });
 
       expect(res.status).toBe(201);
       expect(res.body.tags).toEqual(['foo', 'bar']);
@@ -113,7 +113,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     test('accepts empty array tags', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test', tags: [] });
+        .send({ created_by: 'test-creator', title: 'test', tags: [] });
 
       expect(res.status).toBe(201);
       expect(res.body.tags).toEqual([]);
@@ -122,7 +122,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     test('accepts undefined tags (defaults to empty)', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test' });
+        .send({ created_by: 'test-creator', title: 'test' });
 
       expect(res.status).toBe(201);
       expect(res.body.tags).toEqual([]);
@@ -135,7 +135,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     test('rejects boolean priority with 400', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test', priority: true });
+        .send({ created_by: 'test-creator', title: 'test', priority: true });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('priority');
@@ -144,7 +144,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     test('rejects null priority with 400', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test', priority: null });
+        .send({ created_by: 'test-creator', title: 'test', priority: null });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('priority');
@@ -153,7 +153,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     test('rejects string priority with 400', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test', priority: 'high' });
+        .send({ created_by: 'test-creator', title: 'test', priority: 'high' });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('priority');
@@ -162,7 +162,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     test('rejects float priority with 400', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test', priority: 3.5 });
+        .send({ created_by: 'test-creator', title: 'test', priority: 3.5 });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('priority');
@@ -171,7 +171,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     test('rejects NaN with 400', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test', priority: NaN });
+        .send({ created_by: 'test-creator', title: 'test', priority: NaN });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('priority');
@@ -180,7 +180,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     test('rejects Infinity with 400', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test', priority: Infinity });
+        .send({ created_by: 'test-creator', title: 'test', priority: Infinity });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('priority');
@@ -189,7 +189,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     test('accepts integer priority', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test', priority: 7 });
+        .send({ created_by: 'test-creator', title: 'test', priority: 7 });
 
       expect(res.status).toBe(201);
       expect(res.body.priority).toBe(7);
@@ -198,7 +198,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     test('accepts undefined priority (defaults to 0)', async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'test' });
+        .send({ created_by: 'test-creator', title: 'test' });
 
       expect(res.status).toBe(201);
       expect(res.body.priority).toBe(0);
@@ -235,7 +235,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     let taskId: number;
 
     beforeEach(async () => {
-      const res = await request(ctx.app).post('/api/v1/tasks').send({ title: 'test' });
+      const res = await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'test' });
       taskId = res.body.id;
     });
 
@@ -413,7 +413,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
 
   describe('#439: Non-string body fields return descriptive errors', () => {
     test('POST /tasks/:id/comments with number content → 400 with descriptive message', async () => {
-      const taskRes = await request(ctx.app).post('/api/v1/tasks').send({ title: 'test' });
+      const taskRes = await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'test' });
 
       const res = await request(ctx.app)
         .post(`/api/v1/tasks/${taskRes.body.id}/comments`)
@@ -425,7 +425,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     });
 
     test('POST /tasks/:id/links with number url → 400 with descriptive message', async () => {
-      const taskRes = await request(ctx.app).post('/api/v1/tasks').send({ title: 'test' });
+      const taskRes = await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'test' });
 
       const res = await request(ctx.app)
         .post(`/api/v1/tasks/${taskRes.body.id}/links`)
@@ -437,7 +437,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     });
 
     test('PATCH /comments/:id with number content → 400 with descriptive message', async () => {
-      const taskRes = await request(ctx.app).post('/api/v1/tasks').send({ title: 'test' });
+      const taskRes = await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'test' });
       const commentRes = await request(ctx.app)
         .post(`/api/v1/tasks/${taskRes.body.id}/comments`)
         .send({ content: 'original', created_by: 'agent' });
@@ -452,7 +452,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     });
 
     test('PATCH /links/:id with number url → 400 with descriptive message', async () => {
-      const taskRes = await request(ctx.app).post('/api/v1/tasks').send({ title: 'test' });
+      const taskRes = await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'test' });
       const linkRes = await request(ctx.app)
         .post(`/api/v1/tasks/${taskRes.body.id}/links`)
         .send({ url: 'https://example.com', created_by: 'agent' });
@@ -467,11 +467,11 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     });
 
     test('POST /tasks/:parentId/subtasks with number title → 400 with descriptive message', async () => {
-      const parentRes = await request(ctx.app).post('/api/v1/tasks').send({ title: 'parent' });
+      const parentRes = await request(ctx.app).post('/api/v1/tasks').send({ created_by: 'test-creator', title: 'parent' });
 
       const res = await request(ctx.app)
         .post(`/api/v1/tasks/${parentRes.body.id}/subtasks`)
-        .send({ title: 42 });
+        .send({ created_by: 'test-creator', title: 42 });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('title');
@@ -487,7 +487,7 @@ describe('REST API Defect Fixes — Batch 2 (#433-#440)', () => {
     beforeEach(async () => {
       const res = await request(ctx.app)
         .post('/api/v1/tasks')
-        .send({ title: 'transfer test', assigned_to: 'agent-a' });
+        .send({ created_by: 'test-creator', title: 'transfer test', assigned_to: 'agent-a' });
       taskId = res.body.id;
     });
 

@@ -55,7 +55,7 @@ export function createTaskCreateCommand(program: Command): void {
         const task = await client.createTask({
           title,
           description: options.description,
-          assigned_to: options.assignedTo || config.defaultAgent,
+          assigned_to: options.assignedTo || config.agent,
           created_by: options.createdBy,
           priority: options.priority,
           status: options.status,

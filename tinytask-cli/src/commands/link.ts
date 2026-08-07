@@ -46,12 +46,14 @@ export function createLinkCommands(program: Command): void {
           process.exit(1);
         }
 
+        const createdBy = options.createdBy || config.agent;
+
         const client = await ensureConnected(config.url);
         const result = await client.addLink(
           parseInt(taskId),
           url,
           await resolveContent(options.stdin, options.description),
-          options.createdBy || config.defaultAgent
+          createdBy
         );
 
         if (command.optsWithGlobals().json) {

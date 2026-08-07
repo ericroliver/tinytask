@@ -59,7 +59,7 @@ export interface CreateTaskParams {
   description?: string;
   status?: TaskStatus;
   assigned_to?: string;
-  created_by?: string;
+  created_by: string;
   priority?: number;
   tags?: string[];
   parent_task_id?: number;

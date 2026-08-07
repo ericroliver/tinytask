@@ -25,12 +25,12 @@ import { z } from 'zod';
 
 export const ProfileSchema = z.object({
   url: z.string().url(),
-  defaultAgent: z.string().optional(),
+  agent: z.string().optional(),
 });
 
 export const ConfigSchema = z.object({
   url: z.string().url().optional(),
-  defaultAgent: z.string().optional(),
+  agent: z.string().optional(),
   outputFormat: z.enum(['table', 'json', 'csv', 'compact']).default('table'),
   colorOutput: z.boolean().default(true),
   timeout: z.number().default(30000),
@@ -92,8 +92,8 @@ export async function loadConfig(options: {
   if (process.env.TINYTASK_URL) {
     config.url = process.env.TINYTASK_URL;
   }
-  if (process.env.TINYTASK_AGENT) {
-    config.defaultAgent = process.env.TINYTASK_AGENT;
+  if (process.env.TKO_AGENT) {
+    config.agent = process.env.TKO_AGENT;
   }
   if (process.env.TINYTASK_FORMAT) {
     config.outputFormat = process.env.TINYTASK_FORMAT as any;
@@ -245,7 +245,7 @@ export function createConfigCommands(program: Command): void {
     .command('add <name>')
     .description('Add a new profile')
     .requiredOption('--url <url>', 'TinyTask server URL')
-    .option('--default-agent <agent>', 'Default agent name')
+    .option('--agent <agent>', 'Default agent name')
     .action(async (name: string, options) => {
       try {
         const currentConfig = await loadConfig({});
@@ -256,7 +256,7 @@ export function createConfigCommands(program: Command): void {
         
         currentConfig.profiles[name] = {
           url: options.url,
-          defaultAgent: options.defaultAgent,
+          agent: options.agent,
         };
         
         await saveConfig(currentConfig);
@@ -284,8 +284,8 @@ export function createConfigCommands(program: Command): void {
           const active = name === currentConfig.activeProfile ? chalk.green(' (active)') : '';
           console.log(`  ${chalk.bold(name)}${active}`);
           console.log(`    URL: ${prof.url}`);
-          if (prof.defaultAgent) {
-            console.log(`    Default Agent: ${prof.defaultAgent}`);
+          if (prof.agent) {
+            console.log(`    Agent: ${prof.agent}`);
           }
         }
       } catch (error) {
@@ -387,21 +387,21 @@ describe('Configuration Loader', () => {
 // ~/.tinytaskrc
 {
   "url": "http://localhost:3000/mcp",
-  "defaultAgent": "myname",
+  "agent": "myname",
   "outputFormat": "table",
   "colorOutput": true,
   "profiles": {
     "dev": {
       "url": "http://localhost:3000/mcp",
-      "defaultAgent": "dev-agent"
+      "agent": "dev-agent"
     },
     "staging": {
       "url": "https://staging.example.com/mcp",
-      "defaultAgent": "staging-agent"
+      "agent": "staging-agent"
     },
     "prod": {
       "url": "https://prod.example.com/mcp",
-      "defaultAgent": "prod-agent"
+      "agent": "prod-agent"
     }
   },
   "activeProfile": "dev"

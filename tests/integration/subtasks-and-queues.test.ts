@@ -20,6 +20,7 @@ describe('Subtasks and Queues Integration', () => {
     test('should create subtask with parent_task_id', () => {
       // Create parent task
       const parent = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Parent Task',
         status: 'idle',
         priority: 5,
@@ -27,6 +28,7 @@ describe('Subtasks and Queues Integration', () => {
 
       // Create subtask using createSubtask method
       const subtask = client.taskService.createSubtask(parent.id, {
+        created_by: 'test-creator',
         title: 'Subtask 1',
         status: 'idle',
       });
@@ -39,18 +41,21 @@ describe('Subtasks and Queues Integration', () => {
     test('should create 3-level task hierarchy', () => {
       // Create parent
       const parent = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Parent Task',
         status: 'idle',
       });
 
       // Create child
       const child = client.taskService.createSubtask(parent.id, {
+        created_by: 'test-creator',
         title: 'Child Task',
         status: 'idle',
       });
 
       // Create grandchild
       const grandchild = client.taskService.createSubtask(child.id, {
+        created_by: 'test-creator',
         title: 'Grandchild Task',
         status: 'idle',
       });
@@ -71,21 +76,25 @@ describe('Subtasks and Queues Integration', () => {
     test('should enforce max depth of 3 levels', () => {
       // Create 4-level hierarchy (implementation allows up to depth 3, which is 4 levels)
       const level1 = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Level 1',
         status: 'idle',
       });
 
       const level2 = client.taskService.createSubtask(level1.id, {
+        created_by: 'test-creator',
         title: 'Level 2',
         status: 'idle',
       });
 
       const level3 = client.taskService.createSubtask(level2.id, {
+        created_by: 'test-creator',
         title: 'Level 3',
         status: 'idle',
       });
 
       const level4 = client.taskService.createSubtask(level3.id, {
+        created_by: 'test-creator',
         title: 'Level 4',
         status: 'idle',
       });
@@ -93,6 +102,7 @@ describe('Subtasks and Queues Integration', () => {
       // Attempting to create level 5 should throw error (depth would be 4)
       expect(() => {
         client.taskService.createSubtask(level4.id, {
+          created_by: 'test-creator',
           title: 'Level 5 - Should Fail',
           status: 'idle',
         });
@@ -101,11 +111,13 @@ describe('Subtasks and Queues Integration', () => {
 
     test('should prevent circular dependencies', () => {
       const task1 = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Task 1',
         status: 'idle',
       });
 
       const task2 = client.taskService.createSubtask(task1.id, {
+        created_by: 'test-creator',
         title: 'Task 2',
         status: 'idle',
       });
@@ -118,6 +130,7 @@ describe('Subtasks and Queues Integration', () => {
 
     test('should prevent task from being its own parent', () => {
       const task = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Task',
         status: 'idle',
       });
@@ -129,21 +142,25 @@ describe('Subtasks and Queues Integration', () => {
 
     test('should cascade delete when parent is deleted', () => {
       const parent = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Parent',
         status: 'idle',
       });
 
       const child1 = client.taskService.createSubtask(parent.id, {
+        created_by: 'test-creator',
         title: 'Child 1',
         status: 'idle',
       });
 
       const child2 = client.taskService.createSubtask(parent.id, {
+        created_by: 'test-creator',
         title: 'Child 2',
         status: 'idle',
       });
 
       const grandchild = client.taskService.createSubtask(child1.id, {
+        created_by: 'test-creator',
         title: 'Grandchild',
         status: 'idle',
       });
@@ -160,16 +177,19 @@ describe('Subtasks and Queues Integration', () => {
 
     test('should move subtask to different parent', () => {
       const parent1 = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Parent 1',
         status: 'idle',
       });
 
       const parent2 = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Parent 2',
         status: 'idle',
       });
 
       const subtask = client.taskService.createSubtask(parent1.id, {
+        created_by: 'test-creator',
         title: 'Movable Subtask',
         status: 'idle',
       });
@@ -189,12 +209,14 @@ describe('Subtasks and Queues Integration', () => {
 
     test('should inherit queue from parent when not specified', () => {
       const parent = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Parent',
         status: 'idle',
         queue_name: 'dev',
       });
 
       const subtask = client.taskService.createSubtask(parent.id, {
+        created_by: 'test-creator',
         title: 'Subtask',
         status: 'idle',
         // queue_name not specified - should inherit from parent
@@ -208,6 +230,7 @@ describe('Subtasks and Queues Integration', () => {
   describe('Queue Management', () => {
     test('should add task to queue', () => {
       const task = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Task in Queue',
         status: 'idle',
         queue_name: 'dev',
@@ -222,6 +245,7 @@ describe('Subtasks and Queues Integration', () => {
 
     test('should move task between queues', () => {
       const task = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Task',
         status: 'idle',
         queue_name: 'dev',
@@ -242,6 +266,7 @@ describe('Subtasks and Queues Integration', () => {
 
     test('should remove task from queue', () => {
       const task = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Task',
         status: 'idle',
         queue_name: 'dev',
@@ -261,18 +286,21 @@ describe('Subtasks and Queues Integration', () => {
     test('should list all queues', () => {
       // Create tasks in different queues
       client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Dev Task',
         status: 'idle',
         queue_name: 'dev',
       });
 
       client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'QA Task',
         status: 'idle',
         queue_name: 'qa',
       });
 
       client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Product Task',
         status: 'idle',
         queue_name: 'product',
@@ -288,12 +316,14 @@ describe('Subtasks and Queues Integration', () => {
     test('should get queue statistics', () => {
       // Create tasks with different statuses
       client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Idle Task',
         status: 'idle',
         queue_name: 'dev',
       });
 
       client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Working Task',
         status: 'working',
         queue_name: 'dev',
@@ -301,12 +331,14 @@ describe('Subtasks and Queues Integration', () => {
       });
 
       client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Complete Task',
         status: 'complete',
         queue_name: 'dev',
       });
 
       client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Unassigned Task',
         status: 'idle',
         queue_name: 'dev',
@@ -325,12 +357,14 @@ describe('Subtasks and Queues Integration', () => {
     test('should get tasks in queue with filters', () => {
       // Create tasks
       client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Idle Task',
         status: 'idle',
         queue_name: 'dev',
       });
 
       client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Working Task',
         status: 'working',
         queue_name: 'dev',
@@ -349,6 +383,7 @@ describe('Subtasks and Queues Integration', () => {
 
     test('should get unassigned tasks in queue', () => {
       client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Assigned Task',
         status: 'idle',
         queue_name: 'dev',
@@ -356,12 +391,14 @@ describe('Subtasks and Queues Integration', () => {
       });
 
       client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Unassigned Task 1',
         status: 'idle',
         queue_name: 'dev',
       });
 
       client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Unassigned Task 2',
         status: 'idle',
         queue_name: 'dev',
@@ -380,6 +417,7 @@ describe('Subtasks and Queues Integration', () => {
       // Create multiple tasks
       for (let i = 0; i < 5; i++) {
         client.taskService.createTask({
+          created_by: 'test-creator',
           title: `Task ${i}`,
           status: 'idle',
           queue_name: 'dev',
@@ -400,6 +438,7 @@ describe('Subtasks and Queues Integration', () => {
     test('should handle subtasks across different queues', () => {
       // Create parent in product queue
       const parent = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Product Feature',
         status: 'idle',
         queue_name: 'product',
@@ -408,6 +447,7 @@ describe('Subtasks and Queues Integration', () => {
 
       // Create dev subtask
       const devSubtask = client.taskService.createSubtask(parent.id, {
+        created_by: 'test-creator',
         title: 'Implement Feature',
         status: 'idle',
         queue_name: 'dev',
@@ -416,6 +456,7 @@ describe('Subtasks and Queues Integration', () => {
 
       // Create QA subtask
       const qaSubtask = client.taskService.createSubtask(parent.id, {
+        created_by: 'test-creator',
         title: 'Test Feature',
         status: 'idle',
         queue_name: 'qa',
@@ -447,6 +488,7 @@ describe('Subtasks and Queues Integration', () => {
 
       // Create tasks in different queues for same agent
       client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Dev Task',
         status: 'idle',
         queue_name: 'dev',
@@ -454,6 +496,7 @@ describe('Subtasks and Queues Integration', () => {
       });
 
       client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'QA Task',
         status: 'idle',
         queue_name: 'qa',
@@ -461,6 +504,7 @@ describe('Subtasks and Queues Integration', () => {
       });
 
       client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Product Task',
         status: 'idle',
         queue_name: 'product',
@@ -474,12 +518,14 @@ describe('Subtasks and Queues Integration', () => {
 
     test('should maintain hierarchy when moving tasks between queues', () => {
       const parent = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Parent',
         status: 'idle',
         queue_name: 'dev',
       });
 
       const child = client.taskService.createSubtask(parent.id, {
+        created_by: 'test-creator',
         title: 'Child',
         status: 'idle',
         queue_name: 'dev',
@@ -502,6 +548,7 @@ describe('Subtasks and Queues Integration', () => {
   describe('Backwards Compatibility', () => {
     test('should work with tasks without parent_task_id', () => {
       const task = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Legacy Task',
         status: 'idle',
       });
@@ -514,6 +561,7 @@ describe('Subtasks and Queues Integration', () => {
 
     test('should work with tasks without queue_name', () => {
       const task = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Task Without Queue',
         status: 'idle',
       });
@@ -528,6 +576,7 @@ describe('Subtasks and Queues Integration', () => {
     test('should maintain existing task operations', () => {
       // Standard CRUD operations should still work
       const task = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Standard Task',
         description: 'Description',
         status: 'idle',
@@ -551,14 +600,17 @@ describe('Subtasks and Queues Integration', () => {
   describe('Include Archived Subtasks', () => {
     test('getSubtasks excludes archived subtasks by default', () => {
       const parent = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Parent',
         status: 'idle',
       });
       const child = client.taskService.createSubtask(parent.id, {
+        created_by: 'test-creator',
         title: 'Active Child',
         status: 'idle',
       });
       const archivedChild = client.taskService.createSubtask(parent.id, {
+        created_by: 'test-creator',
         title: 'Archived Child',
         status: 'idle',
       });
@@ -571,14 +623,17 @@ describe('Subtasks and Queues Integration', () => {
 
     test('getSubtasks includes archived subtasks when includeArchived=true', () => {
       const parent = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Parent',
         status: 'idle',
       });
       const child = client.taskService.createSubtask(parent.id, {
+        created_by: 'test-creator',
         title: 'Active Child',
         status: 'idle',
       });
       const archivedChild = client.taskService.createSubtask(parent.id, {
+        created_by: 'test-creator',
         title: 'Archived Child',
         status: 'idle',
       });
@@ -593,18 +648,22 @@ describe('Subtasks and Queues Integration', () => {
 
     test('getSubtasks includes archived subtasks recursively when includeArchived=true', () => {
       const parent = client.taskService.createTask({
+        created_by: 'test-creator',
         title: 'Parent',
         status: 'idle',
       });
       const child = client.taskService.createSubtask(parent.id, {
+        created_by: 'test-creator',
         title: 'Active Child',
         status: 'idle',
       });
       const grandchild = client.taskService.createSubtask(child.id, {
+        created_by: 'test-creator',
         title: 'Active Grandchild',
         status: 'idle',
       });
       const archivedGrandchild = client.taskService.createSubtask(child.id, {
+        created_by: 'test-creator',
         title: 'Archived Grandchild',
         status: 'idle',
       });

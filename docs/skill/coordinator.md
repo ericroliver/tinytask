@@ -16,6 +16,8 @@ description: Coordinator task management skill for triage, multi-agent coordinat
 | Status discipline | Rarely sets `working` — coordinates rather than implements |
 | CLI reference | See `SKILL.md` for full command syntax |
 
+> **Agent identity:** Set `TKO_AGENT` in your environment. Used as `created_by` for tasks, comments, links. Alternatively, pass `--created-by <agent>` per command, or `tinytask config set agent <your-agent>`.
+
 ## Your Queues
 
 | Queue | Role | When |

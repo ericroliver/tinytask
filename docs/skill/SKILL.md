@@ -93,8 +93,9 @@ TinyTask is a task management system for LLM agent collaboration, exposed as an 
 ```bash
 tinytask config init                              # First-time setup → ~/.tinytaskrc.json
 tinytask config set url http://localhost:3000/mcp # Server URL
-tinytask config set defaultAgent <your-agent>     # Your agent name
 ```
+
+**Agent identity:** Set the `TKO_AGENT` environment variable in your agent process. This is used as `created_by` for tasks, comments, and links. Alternatively, pass `--created-by <agent>` per command, or `tinytask config set agent <your-agent>`.
 
 ### Global Options
 
@@ -107,13 +108,16 @@ tinytask config set defaultAgent <your-agent>     # Your agent name
 
 | Variable | Description |
 |---|---|
+| `TKO_AGENT` | Agent identity — used for `created_by` on tasks, comments, links; `--from` on move; `--agent` on signup/queue view (preferred) |
+| `TINYTASK_AGENT` | Legacy alias for `TKO_AGENT` (backward compat) |
 | `TINYTASK_URL` | Server URL |
-| `TINYTASK_AGENT` | Default agent name |
 | `TINYTASK_FORMAT` | Output format (`table`, `json`, `csv`, `compact`) |
 | `TINYTASK_NO_COLOR` | Set `true` to disable color |
 | `TINYTASK_TIMEOUT` | Request timeout (ms) |
 
 Precedence: CLI flags > environment variables > active profile > base config > defaults.
+
+> **Note:** `assigned_to` has no default — tasks are unassigned unless you specify `-a <agent>` or assign via queue. Agent identity (`TKO_AGENT` or `--created-by`) is required for task creation.
 
 ## Task Commands
 
@@ -122,6 +126,7 @@ Precedence: CLI flags > environment variables > active profile > base config > d
 ```bash
 # Create
 tinytask task create "<title>" [-d <desc>] [-a <agent>] [-c <creator>] [-p <priority>] [-t <tags>] [--parent <id>] [-q <queue>]
+# created_by is required — set TKO_AGENT env var or pass -c <creator>. assigned_to defaults to unassigned.
 
 # Get / Update / List / Archive / Delete
 tinytask task get <id> [--json]
@@ -202,9 +207,9 @@ Link type prefixes (convention — in description field): `[blocks]`, `[related]
 ```bash
 tinytask config init [-f]                 # Create ~/.tinytaskrc.json (--force to overwrite)
 tinytask config show                      # Display current config
-tinytask config set <key> <value>         # Set: url, defaultAgent, outputFormat, colorOutput, timeout
+tinytask config set <key> <value>         # Set: url, agent, outputFormat, colorOutput, timeout
 tinytask config get <key>                 # Get value
-tinytask config profile add -n <name> -u <url> [--default-agent <agent>]
+tinytask config profile add -n <name> -u <url> [--agent <agent>]
 tinytask config profile list
 tinytask config profile use <name>
 tinytask config profile remove <name>

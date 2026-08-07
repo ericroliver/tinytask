@@ -59,11 +59,26 @@ describe('Configuration Loader', () => {
     expect(config.colorOutput).toBe(false);
   });
 
-  it('should use default agent from environment', async () => {
-    process.env.TINYTASK_AGENT = 'test-agent';
+  it('should use agent identity from TKO_AGENT environment variable', async () => {
+    process.env.TKO_AGENT = 'test-agent';
 
     const config = await loadConfig({});
-    expect(config.defaultAgent).toBe('test-agent');
+    expect(config.agent).toBe('test-agent');
+  });
+
+  it('should fall back to TINYTASK_AGENT when TKO_AGENT is not set', async () => {
+    process.env.TINYTASK_AGENT = 'legacy-agent';
+
+    const config = await loadConfig({});
+    expect(config.agent).toBe('legacy-agent');
+  });
+
+  it('should prioritize TKO_AGENT over TINYTASK_AGENT', async () => {
+    process.env.TKO_AGENT = 'tko-agent';
+    process.env.TINYTASK_AGENT = 'legacy-agent';
+
+    const config = await loadConfig({});
+    expect(config.agent).toBe('tko-agent');
   });
 
   it('should validate configuration schema', async () => {

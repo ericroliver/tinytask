@@ -14,7 +14,7 @@ export const toolSchemas = {
     title: z.string().describe('Task title'),
     description: z.string().optional().describe('Task description'),
     assigned_to: z.string().optional().describe('Agent name to assign to'),
-    created_by: z.string().optional().describe('Agent name creating the task'),
+    created_by: z.string().describe('Agent name creating the task (required)'),
     priority: z.coerce.number().optional().describe('Priority level (default: 0)'),
     tags: z.array(z.string()).optional().describe('Array of tags'),
     parent_task_id: z.coerce.number().optional().describe('Parent task ID (creates subtask)'),
@@ -68,6 +68,7 @@ export const toolSchemas = {
     title: z.string().describe('Subtask title'),
     description: z.string().optional().describe('Subtask description'),
     assigned_to: z.string().optional().describe('Agent to assign to'),
+    created_by: z.string().describe('Agent name creating the subtask (required)'),
     priority: z.coerce.number().optional().describe('Priority (default: 0)'),
     tags: z.array(z.string()).optional().describe('Tags'),
     queue_name: z.string().optional().describe('Override queue from parent'),
@@ -162,6 +163,15 @@ export const toolSchemas = {
 
   list_comments: z.object({
     task_id: z.coerce.number().describe('Task ID'),
+  }),
+
+  get_comment: z.object({
+    id: z.coerce.number().describe('Comment ID'),
+  }),
+
+  move_comment: z.object({
+    comment_id: z.coerce.number().describe('Comment ID to move'),
+    to_task_id: z.coerce.number().describe('Target task ID to move the comment to'),
   }),
 
   // Link tools
@@ -408,6 +418,16 @@ export const toolDefinitions = [
     name: 'list_comments',
     description: 'List all comments for a task',
     inputSchema: zodToJsonSchema(toolSchemas.list_comments),
+  },
+  {
+    name: 'get_comment',
+    description: 'Get a single comment by ID',
+    inputSchema: zodToJsonSchema(toolSchemas.get_comment),
+  },
+  {
+    name: 'move_comment',
+    description: 'Move a comment to a different task, leaving a record on the original task',
+    inputSchema: zodToJsonSchema(toolSchemas.move_comment),
   },
 
   // Link tools

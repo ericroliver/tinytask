@@ -7,7 +7,7 @@ export interface CreateTaskParams {
   title: string;
   description?: string;
   assigned_to?: string;
-  created_by?: string;
+  created_by: string;
   priority?: number;
   tags?: string[];
   parent_task_id?: number;
@@ -85,6 +85,15 @@ export interface ListCommentsParams {
   task_id: number;
 }
 
+export interface GetCommentParams {
+  id: number;
+}
+
+export interface MoveCommentParams {
+  comment_id: number;
+  to_task_id: number;
+}
+
 // Link handler parameter types
 export interface AddLinkParams {
   task_id: number;
@@ -113,6 +122,7 @@ export interface CreateSubtaskParams {
   title: string;
   description?: string;
   assigned_to?: string;
+  created_by: string;
   priority?: number;
   tags?: string[];
   queue_name?: string;
