@@ -85,6 +85,10 @@ export async function loadConfig(options: {
 }
 
 export function getConfigPath(): string {
+  // Allow override via environment variable
+  if (process.env.TINYTASK_CONFIG_PATH) {
+    return process.env.TINYTASK_CONFIG_PATH;
+  }
   return path.join(os.homedir(), '.tinytaskrc.json');
 }
 
