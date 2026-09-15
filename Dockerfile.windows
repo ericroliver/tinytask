@@ -1,0 +1,104 @@
+# escape=`
+# =============================================================================
+# TinyTask MCP Server - Windows containers
+# Multistage: servercore:ltsc2022 (builder) -> nanoserver:ltsc2022 (runtime)
+#
+# Node.js publishes NO official Windows container images, so Node 20 LTS is
+# installed here from the official win-x64 zip distribution. All install work
+# (unzip, npm, VC++ runtime harvest) happens in the servercore builder, which
+# has PowerShell + Expand-Archive + msiexec. The nanoserver runtime receives a
+# lean copy: node.exe, VC runtime DLLs, compiled app and prod node_modules.
+#
+# Build:   docker build -f Dockerfile.windows -t tinytask-mcp:latest .
+#
+# Differences vs the Linux Dockerfile:
+#   - no dumb-init (does not exist on Windows); node receives signals directly
+#   - copy-assets is Unix-only (mkdir -p / cp) -> replaced with PowerShell
+#   - "prepare" hook is bypassed everywhere via --ignore-scripts
+#   - better-sqlite3 uses its prebuilt win32-x64 binary (Node 20 = ABI v115),
+#     no compiler toolchain needed
+#   - C:\data is created and granted to ContainerUser for DB writes
+# =============================================================================
+
+FROM mcr.microsoft.com/windows/servercore:ltsc2022 AS builder
+
+WORKDIR C:/app
+
+# --- Install Node.js 20 LTS (win-x64 zip) ------------------------------------
+RUN powershell -NoProfile -Command "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri 'https://nodejs.org/dist/v20.20.2/node-v20.20.2-win-x64.zip' -OutFile C:\node.zip; Expand-Archive -Path C:\node.zip -DestinationPath C:\; Rename-Item 'C:\node-v20.20.2-win-x64' 'node'; Remove-Item C:\node.zip"
+
+ENV PATH="C:\node;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0"
+
+# --- App source ---------------------------------------------------------------
+COPY package*.json tsconfig.json ./
+COPY src ./src
+
+# Full deps for the TypeScript build. --ignore-scripts skips tinytask's
+# "prepare" hook, which runs the Unix-only copy-assets script (mkdir -p / cp).
+RUN npm ci --ignore-scripts
+
+# Compile TypeScript (devDependency typescript provides the tsc binary).
+RUN npx tsc
+
+# Windows equivalent of copy-assets: schema.sql must ship inside build/db.
+RUN powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path C:\app\build\db | Out-Null; Copy-Item C:\app\src\db\schema.sql C:\app\build\db\schema.sql"
+
+# Production-only deps, built in an ISOLATED directory (C:\prod). Running a
+# second `npm ci` inside C:\app would make npm delete the existing
+# node_modules tree concurrently with installing - a known race on Windows
+# that fails with EPERM - so prod deps get their own fresh tree.
+WORKDIR C:/prod
+COPY package*.json ./
+
+# Fetch the prebuilt better-sqlite3 native module (win32-x64, Node 20 =
+# ABI v115) - no compiler toolchain required.
+RUN npm ci --omit=dev --ignore-scripts
+RUN npm rebuild better-sqlite3
+
+# Fail the build here if the native module cannot load (e.g. prebuild missing).
+RUN node -e "require('better-sqlite3'); console.log('better-sqlite3 native module loads OK')"
+
+# --- Harvest VC++ runtime DLLs required by better_sqlite3.node ----------------
+# nanoserver does not ship the VC++ redistributable; install it here and copy
+# the three DLLs to a staging dir for the runtime stage.
+RUN powershell -NoProfile -Command "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile C:\vc_redist.x64.exe; $p = Start-Process -FilePath C:\vc_redist.x64.exe -ArgumentList '/install','/quiet','/norestart' -Wait -PassThru; if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { throw ('vc_redist failed with exit code ' + $p.ExitCode) }; New-Item -ItemType Directory -Force -Path C:\stage | Out-Null; Copy-Item C:\Windows\System32\vcruntime140.dll,C:\Windows\System32\vcruntime140_1.dll,C:\Windows\System32\msvcp140.dll C:\stage\; Remove-Item C:\vc_redist.x64.exe"
+
+# =============================================================================
+# Runtime stage
+# =============================================================================
+FROM mcr.microsoft.com/windows/nanoserver:ltsc2022
+
+WORKDIR C:/app
+
+ENV PATH="C:\node;C:\Windows\system32;C:\Windows"
+
+# node.exe + the VC++ runtime DLLs the native addon links against.
+# (DLLs live next to node.exe so the Windows DLL search path finds them.)
+COPY --from=builder C:/node/node.exe C:/node/
+COPY --from=builder C:/stage/vcruntime140.dll C:/node/
+COPY --from=builder C:/stage/vcruntime140_1.dll C:/node/
+COPY --from=builder C:/stage/msvcp140.dll C:/node/
+
+# App: package.json (required - "type": "module" drives ESM loading of build/),
+# compiled output and production node_modules (incl. better_sqlite3.node).
+COPY package.json ./
+COPY --from=builder C:/prod/node_modules C:/app/node_modules
+COPY --from=builder C:/app/build C:/app/build
+
+# Data dir + ACL so ContainerUser can write the sqlite DB (non-bind-mount case).
+RUN mkdir C:\data && icacls C:\data /grant ContainerUser:(OI)(CI)F
+
+# Verify the native module really loads in the runtime image, not just builder.
+RUN node -e "require('better-sqlite3'); console.log('better_sqlite3.node loads in nanoserver')"
+
+USER ContainerUser
+
+# Expose HTTP port (works with both Streamable HTTP and legacy SSE)
+EXPOSE 3000
+
+# Health check (no dumb-init on Windows; exec form, absolute node path)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD ["C:\\node\\node.exe", "-e", "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+
+# Start server
+# Default behavior without environment variables: runs in 'both' mode with Streamable HTTP
+CMD ["C:\\node\\node.exe", "build/index.js"]
