@@ -238,6 +238,14 @@ Two new atomic task management tools that significantly reduce token consumption
 
 ## [Unreleased]
 
+### Added
+- **CLI 0.7.0** — context-saving output options (task #906): `task get --no-comments`
+  (metadata + description only, ~88% smaller on comment-heavy tasks), `task get --last-comment N`
+  (only the last N comments), `comment list --limit N` (only the last N comments; the header
+  count still reports the task's total), and `task list --format compact` now respects
+  `--fields` (renders exactly the requested fields, in order, instead of the hardcoded
+  id/title/status layout). Client-side truncation only — no server/API changes.
+
 ### Planned Features
 - Authentication and authorization
 - Multi-user support
