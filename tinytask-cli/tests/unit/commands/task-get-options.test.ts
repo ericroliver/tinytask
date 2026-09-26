@@ -1,7 +1,8 @@
 /**
  * Tests for task get command options:
- * - --no-comments (omit comments entirely)
- * - --last-comment N (only the last N comments)
+ * - comments are omitted by default
+ * - --include-comments opts in (bare = all comments)
+ * - --include-comments N includes only the last N comments
  */
 import { describe, it, expect, vi } from 'vitest';
 
@@ -17,30 +18,40 @@ vi.mock('@modelcontextprotocol/sdk/client/streamable.js', () => ({
 const { createCLI } = await import('../../../src/cli.js');
 
 describe('Task Get Command Options', () => {
-  it('should have --no-comments option on task get', () => {
+  it('should have --include-comments option on task get', () => {
     const cli = createCLI();
     const taskCmd = cli.commands.find((c) => c.name() === 'task');
     const getCmd = taskCmd?.commands.find((c) => c.name() === 'get');
     expect(getCmd).toBeDefined();
 
     const options = getCmd!.options.map((o) => o.long);
-    expect(options).toContain('--no-comments');
+    expect(options).toContain('--include-comments');
   });
 
-  it('should have --last-comment option on task get', () => {
+  it('should have an optional value for --include-comments', () => {
     const cli = createCLI();
     const taskCmd = cli.commands.find((c) => c.name() === 'task');
     const getCmd = taskCmd?.commands.find((c) => c.name() === 'get');
-    const lastComment = getCmd?.options.find((o) => o.long === '--last-comment');
-    expect(lastComment).toBeDefined();
-    expect(lastComment?.description).toContain('last N comments');
+    const includeComments = getCmd?.options.find((o) => o.long === '--include-comments');
+    // Optional value: brackets, not angle brackets (--include-comments [n])
+    expect(includeComments?.flags).toContain('[n]');
   });
 
-  it('should describe --no-comments as omitting comments', () => {
+  it('should describe --include-comments as opt-in with last-N support', () => {
     const cli = createCLI();
     const taskCmd = cli.commands.find((c) => c.name() === 'task');
     const getCmd = taskCmd?.commands.find((c) => c.name() === 'get');
-    const noComments = getCmd?.options.find((o) => o.long === '--no-comments');
-    expect(noComments?.description).toContain('Omit comments');
+    const includeComments = getCmd?.options.find((o) => o.long === '--include-comments');
+    expect(includeComments?.description).toContain('omitted by default');
+    expect(includeComments?.description).toContain('last N');
+  });
+
+  it('should not offer --no-comments or --last-comment anymore', () => {
+    const cli = createCLI();
+    const taskCmd = cli.commands.find((c) => c.name() === 'task');
+    const getCmd = taskCmd?.commands.find((c) => c.name() === 'get');
+    const options = getCmd!.options.map((o) => o.long);
+    expect(options).not.toContain('--no-comments');
+    expect(options).not.toContain('--last-comment');
   });
 });

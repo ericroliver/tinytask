@@ -129,7 +129,7 @@ tinytask task create "<title>" [-d <desc>] [-a <agent>] [-c <creator>] [-p <prio
 # created_by is required — set TKO_AGENT env var or pass -c <creator>. assigned_to defaults to unassigned.
 
 # Get / Update / List / Archive / Delete
-tinytask task get <id> [--json] [--no-comments] [--last-comment <n>]
+tinytask task get <id> [--json] [--include-comments [n]]   # comments omitted by default; bare flag = all, [n] = last N
 tinytask task update <id> [-t <title>] [-d <desc>] [-s <status>] [-a <agent>] [-p <priority>] [--tags <tags>] [--parent <id|null>] [-q <queue>]
 tinytask task list [-a <agent>] [-s <status>] [-q <queue>] [--parent <id>] [--exclude-subtasks] [--include-archived] [--limit <n>] [--offset <n>] [--fields <fields>] [--format <format>]
 tinytask task archive <id>
