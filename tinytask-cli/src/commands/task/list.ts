@@ -83,8 +83,9 @@ export function createTaskListCommand(program: Command): void {
         let tasks = (response.tasks || result) as unknown[];
 
         // Client-side field projection (--fields id,title,...)
+        let fields: string[] = [];
         if (options.fields) {
-          const fields = String(options.fields)
+          fields = String(options.fields)
             .split(',')
             .map((f: string) => f.trim())
             .filter(Boolean);
@@ -94,6 +95,7 @@ export function createTaskListCommand(program: Command): void {
         const formatter = createFormatter(config.outputFormat, {
           color: config.colorOutput,
           verbose: false,
+          fields: fields.length > 0 ? fields : undefined,
         });
 
         console.log(formatter.format(tasks));

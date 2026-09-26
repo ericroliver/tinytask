@@ -130,6 +130,12 @@ export class CompactFormatter implements Formatter {
     const t = task as Record<string, unknown>;
     const parts = [];
 
+    // Explicit field selection (--fields id,title,...) renders exactly the
+    // requested fields in the requested order.
+    if (this.options.fields && this.options.fields.length > 0) {
+      return this.formatFieldsLine(t, this.options.fields);
+    }
+
     // ID
     parts.push(this.formatId(t.id as number));
 
@@ -187,6 +193,61 @@ export class CompactFormatter implements Formatter {
     }
 
     return result;
+  }
+
+  /**
+   * Renders a task line containing exactly the requested fields, in the
+   * requested order. Fields absent from the task object are skipped.
+   */
+  private formatFieldsLine(t: Record<string, unknown>, fields: string[]): string {
+    const parts: string[] = [];
+    for (const field of fields) {
+      const value = t[field];
+      if (value === undefined) {
+        continue;
+      }
+      parts.push(this.formatFieldPart(field, value, t));
+    }
+    return parts.join(' ');
+  }
+
+  /** Renders one field with the same compact decorations used by the default layout. */
+  private formatFieldPart(field: string, value: unknown, task: Record<string, unknown>): string {
+    switch (field) {
+      case 'id':
+        return this.formatId(value as number);
+      case 'title':
+        return this.truncate(String(value), 40);
+      case 'status':
+        return `(${this.formatStatus(String(value))})`;
+      case 'assigned_to':
+        return `@${String(value)}`;
+      case 'priority':
+        return `p:${String(value)}`;
+      case 'tags':
+        return Array.isArray(value) ? `[${value.join(', ')}]` : `[${String(value)}]`;
+      case 'blocked_by_task_id': {
+        if (value && task.is_currently_blocked) {
+          const blockedText = `blocked:#${String(value)}`;
+          return this.options.color ? chalk.red(blockedText) : blockedText;
+        }
+        return this.genericFieldPart(field, value);
+      }
+      default:
+        return this.genericFieldPart(field, value);
+    }
+  }
+
+  /** Renders arbitrary fields as `field:value`; explicit nulls render as `-`. */
+  private genericFieldPart(field: string, value: unknown): string {
+    const label = `${field}:`;
+    const text =
+      value === null
+        ? '-'
+        : Array.isArray(value)
+          ? value.map((v) => String(v)).join('|')
+          : String(value);
+    return this.options.color ? chalk.gray(label) + text : label + text;
   }
 
   private formatId(id: number): string {

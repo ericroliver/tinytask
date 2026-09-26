@@ -129,9 +129,9 @@ tinytask task create "<title>" [-d <desc>] [-a <agent>] [-c <creator>] [-p <prio
 # created_by is required — set TKO_AGENT env var or pass -c <creator>. assigned_to defaults to unassigned.
 
 # Get / Update / List / Archive / Delete
-tinytask task get <id> [--json]
+tinytask task get <id> [--json] [--no-comments] [--last-comment <n>]
 tinytask task update <id> [-t <title>] [-d <desc>] [-s <status>] [-a <agent>] [-p <priority>] [--tags <tags>] [--parent <id|null>] [-q <queue>]
-tinytask task list [-a <agent>] [-s <status>] [-q <queue>] [--parent <id>] [--exclude-subtasks] [--include-archived] [--limit <n>] [--offset <n>]
+tinytask task list [-a <agent>] [-s <status>] [-q <queue>] [--parent <id>] [--exclude-subtasks] [--include-archived] [--limit <n>] [--offset <n>] [--fields <fields>] [--format <format>]
 tinytask task archive <id>
 tinytask task delete <id> [-y]
 ```
@@ -184,7 +184,7 @@ tinytask move <id> <to-agent> [-f <from-agent>] [-m <comment>]  # Transfer task 
 
 ```bash
 tinytask comment add <task-id> "<content>" [--created-by <agent>]
-tinytask comment list <task-id>
+tinytask comment list <task-id> [--limit <n>]   # --limit: only the last N comments
 tinytask comment update <comment-id> "<content>"
 tinytask comment delete <comment-id> [-y]
 ```

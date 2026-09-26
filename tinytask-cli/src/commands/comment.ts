@@ -4,6 +4,7 @@ import { ensureConnected } from '../client/connection.js';
 import { createFormatter } from '../formatters/index.js';
 import { loadConfig } from '../config/loader.js';
 import { resolveContent } from '../utils/stdin.js';
+import { takeLast } from '../utils/comments.js';
 
 export function createCommentCommands(program: Command): void {
   const comment = program.command('comment').alias('c').description('Comment operations');
@@ -86,8 +87,21 @@ export function createCommentCommands(program: Command): void {
     .command('list <task-id>')
     .alias('ls')
     .description('List all comments for a task')
-    .action(async (taskId: string, _options, command) => {
+    .option('--limit <n>', 'Show only the last N comments', parseInt)
+    .action(async (taskId: string, options, command) => {
       try {
+        if (
+          options.limit !== undefined &&
+          (!Number.isInteger(options.limit) || options.limit < 0)
+        ) {
+          console.error(
+            chalk.red(
+              `Error: Invalid --limit value '${options.limit}'. Expected a non-negative integer.`
+            )
+          );
+          process.exit(1);
+        }
+
         const config = await loadConfig({
           url: command.optsWithGlobals().url,
           outputFormat: command.optsWithGlobals().json ? 'json' : undefined,
@@ -101,14 +115,25 @@ export function createCommentCommands(program: Command): void {
         }
 
         const client = await ensureConnected(config.url);
-        const comments = await client.listComments(parseInt(taskId));
+        const result = await client.listComments(parseInt(taskId));
+        let output: unknown = result;
+
+        // Keep only the most recent N comments when --limit is given.
+        if (options.limit !== undefined) {
+          const response = result as Record<string, unknown>;
+          if (Array.isArray(response.comments)) {
+            response.comments = takeLast(response.comments, options.limit);
+          } else if (Array.isArray(result)) {
+            output = takeLast(result, options.limit);
+          }
+        }
 
         const formatter = createFormatter(config.outputFormat, {
           color: config.colorOutput,
           verbose: false,
         });
 
-        console.log(formatter.format(comments));
+        console.log(formatter.format(output));
       } catch (error) {
         console.error(
           chalk.red('Error listing comments:'),
