@@ -246,6 +246,12 @@ Two new atomic task management tools that significantly reduce token consumption
   task's total), and `task list --format compact` now respects `--fields` (renders exactly the
   requested fields, in order, instead of the hardcoded id/title/status layout). Client-side
   truncation only — no server/API changes.
+- **CLI 0.7.2** — `task list --fields` no longer crashes the default table renderer
+  (field report, priority 3): projected tasks are missing most fields and the fixed
+  8-column layout crashed reading `priority.toString()` on undefined. The table
+  renderer now renders exactly the requested fields as dynamic columns (undefined-safe,
+  friendly headers), matching the compact/csv/json behavior. `formatPriority` is also
+  defensive against absent priorities.
 - **CLI 0.7.1** — `task update` now stamps the audit trail (task #892): sends `updated_by`
   (defaulting to the configured agent identity, same mechanism comment add already used for
   `created_by`), so `task_history.changed_by` is populated and `task history` shows the acting

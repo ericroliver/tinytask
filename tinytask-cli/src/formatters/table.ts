@@ -2,6 +2,26 @@ import Table from 'cli-table3';
 import chalk from 'chalk';
 import { Formatter, FormatterOptions } from './types.js';
 
+/** Column headers for known task fields in --fields table output. */
+const FIELD_HEADERS: Record<string, string> = {
+  id: 'ID',
+  title: 'Title',
+  description: 'Description',
+  status: 'Status',
+  assigned_to: 'Assigned',
+  priority: 'Priority',
+  tags: 'Tags',
+  parent_task_id: 'Parent',
+  queue_name: 'Queue',
+  blocked_by_task_id: 'Blocked By',
+  auto_promote: 'Auto',
+  created_by: 'Created By',
+  created_at: 'Created',
+  updated_at: 'Updated',
+  completed_at: 'Completed',
+  archived_at: 'Archived',
+};
+
 export class TableFormatter implements Formatter {
   constructor(private options: FormatterOptions) {}
 
@@ -40,6 +60,14 @@ export class TableFormatter implements Formatter {
   formatTasks(tasks: unknown[]): string {
     if (tasks.length === 0) {
       return this.options.color ? chalk.yellow('No tasks found') : 'No tasks found';
+    }
+
+    // Explicit field selection (--fields id,title,...) renders exactly the
+    // requested fields as dynamic columns. Projected tasks may be missing any
+    // field, so the fixed 8-column layout below would crash on them.
+    const requestedFields = this.options.fields;
+    if (requestedFields && requestedFields.length > 0) {
+      return this.formatTasksWithFields(tasks as Record<string, unknown>[], requestedFields);
     }
 
     const table = new Table({
@@ -125,6 +153,58 @@ export class TableFormatter implements Formatter {
     });
 
     return table.toString();
+  }
+
+  /**
+   * Renders tasks with dynamic columns for exactly the requested fields, in
+   * the requested order. Flat rows (no subtask hierarchy) — matching the
+   * compact renderer's --fields behavior. Cells are undefined-safe: projected
+   * tasks may omit fields.
+   */
+  private formatTasksWithFields(
+    taskList: Record<string, unknown>[],
+    fields: string[]
+  ): string {
+    const table = new Table({
+      head: this.formatHeader(fields.map((f) => FIELD_HEADERS[f] ?? f)),
+      style: {
+        head: [],
+        border: this.options.color ? ['gray'] : [],
+      },
+    });
+
+    for (const task of taskList) {
+      table.push(fields.map((field) => this.formatFieldCell(field, task[field], task)));
+    }
+
+    return table.toString();
+  }
+
+  /** Formats one cell for the --fields table layout; absent fields render as '-'. */
+  private formatFieldCell(field: string, value: unknown, task: Record<string, unknown>): string {
+    if (value === undefined || value === null) {
+      return this.options.color ? chalk.gray('-') : '-';
+    }
+    switch (field) {
+      case 'id':
+        return this.formatId(value as number);
+      case 'status':
+        return this.formatStatus(String(value));
+      case 'assigned_to':
+        return this.formatAssignee(value as string);
+      case 'queue_name':
+        return this.formatQueueName(value as string);
+      case 'parent_task_id':
+        return this.formatParent(value as number);
+      case 'priority':
+        return this.formatPriority(value as number);
+      case 'blocked_by_task_id':
+        return this.formatBlockedBy(value as number, Boolean(task.is_currently_blocked));
+      case 'tags':
+        return Array.isArray(value) ? value.map(String).join(', ') : String(value);
+      default:
+        return String(value);
+    }
   }
 
   formatTask(task: Record<string, unknown>): string {
@@ -403,6 +483,9 @@ export class TableFormatter implements Formatter {
   }
 
   private formatPriority(priority: number): string {
+    if (priority === undefined || priority === null) {
+      return this.options.color ? chalk.gray('-') : '-';
+    }
     if (!this.options.color) {
       return priority.toString();
     }
