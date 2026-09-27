@@ -88,6 +88,10 @@ export function createTaskUpdateCommand(program: Command): void {
 
         if (options.queue) updates.queue_name = options.queue;
 
+        // Stamp the acting agent into the audit trail (mirrors comment add,
+        // which defaults created_by to the configured agent identity).
+        if (config.agent) updates.updated_by = config.agent;
+
         if (options.autoPromote === false) {
           updates.auto_promote = false;
         }
