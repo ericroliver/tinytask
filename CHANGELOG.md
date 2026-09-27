@@ -246,6 +246,11 @@ Two new atomic task management tools that significantly reduce token consumption
   task's total), and `task list --format compact` now respects `--fields` (renders exactly the
   requested fields, in order, instead of the hardcoded id/title/status layout). Client-side
   truncation only — no server/API changes.
+- **CLI 0.7.1** — `task update` now stamps the audit trail (task #892): sends `updated_by`
+  (defaulting to the configured agent identity, same mechanism comment add already used for
+  `created_by`), so `task_history.changed_by` is populated and `task history` shows the acting
+  agent on status/field changes instead of `—`. Explicit `updated_by` from MCP callers keeps
+  precedence; no server change required.
 
 ### Planned Features
 - Authentication and authorization
