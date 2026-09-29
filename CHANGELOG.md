@@ -246,6 +246,13 @@ Two new atomic task management tools that significantly reduce token consumption
   task's total), and `task list --format compact` now respects `--fields` (renders exactly the
   requested fields, in order, instead of the hardcoded id/title/status layout). Client-side
   truncation only — no server/API changes.
+- **CLI 0.7.3** — strict positional arity + `comment get` task cross-check (field report
+  #478: `comment get <comment-id> <task-id>` silently ignored the 2nd argument and could
+  print an unrelated task's comment with exit 0 — a silent wrong answer). All commands now
+  reject excess positional arguments ("too many arguments" error instead of silent ignore),
+  and `comment get <comment-id> [task-id]` verifies the comment belongs to the given task,
+  hard-erroring on mismatch. Verified: mismatch → exit 1 with a clear message; matching and
+  single-arg forms unchanged.
 - **CLI 0.7.2** — `task list --fields` no longer crashes the default table renderer
   (field report, priority 3): projected tasks are missing most fields and the fixed
   8-column layout crashed reading `priority.toString()` on undefined. The table

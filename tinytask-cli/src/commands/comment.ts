@@ -145,9 +145,11 @@ export function createCommentCommands(program: Command): void {
 
   // Get comment
   comment
-    .command('get <comment-id>')
-    .description('Get a single comment by ID')
-    .action(async (commentId: string, _options, command) => {
+    .command('get <comment-id> [task-id]')
+    .description(
+      'Get a single comment by ID. Pass the task ID as a second argument to verify the comment belongs to that task (errors out otherwise).'
+    )
+    .action(async (commentId: string, taskId: string | undefined, _options, command) => {
       try {
         const config = await loadConfig({
           url: command.optsWithGlobals().url,
@@ -163,6 +165,22 @@ export function createCommentCommands(program: Command): void {
 
         const client = await ensureConnected(config.url);
         const result = await client.getComment(parseInt(commentId));
+
+        // Cross-check (task #478): silently printing a comment from an
+        // unrelated task is worse than an error. If the caller names a task,
+        // fail loudly on mismatch instead of returning wrong data.
+        if (typeof taskId === 'string' && taskId.trim().length > 0) {
+          const expectedTaskId = parseInt(taskId, 10);
+          const actualTaskId = (result as { task_id?: number }).task_id;
+          if (isNaN(expectedTaskId) || actualTaskId !== expectedTaskId) {
+            console.error(
+              chalk.red(
+                `Error: comment #${commentId} belongs to task #${actualTaskId ?? '?'}, not task #${taskId}`
+              )
+            );
+            process.exit(1);
+          }
+        }
 
         const formatter = createFormatter(config.outputFormat, {
           color: config.colorOutput,

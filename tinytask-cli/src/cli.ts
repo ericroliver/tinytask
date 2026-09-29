@@ -46,6 +46,17 @@ export function createCLI(): Command {
   createCommentCommands(program);
   createLinkCommands(program);
 
+  // Reject excess positional arguments everywhere: commander silently drops
+  // them, which let e.g. `comment get <comment-id> <task-id>` print whichever
+  // comment matched the first ID — from an unrelated task — with exit 0
+  // (silent wrong answer, task #478). Data-returning commands must fail loudly
+  // when called with an argument shape they don't understand.
+  const enforceStrictArity = (command: Command): void => {
+    command.allowExcessArguments(false);
+    command.commands.forEach(enforceStrictArity);
+  };
+  enforceStrictArity(program);
+
   // Connectivity check
   program
     .command('ping')
