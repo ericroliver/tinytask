@@ -1,8 +1,9 @@
 /**
  * Tests for task get command options:
- * - comments are omitted by default
- * - --include-comments opts in (bare = all comments)
+ * - the latest comment is included by default (as if --include-comments 1)
+ * - --include-comments opts in to full history (bare = all comments)
  * - --include-comments N includes only the last N comments
+ * - --include-comments 0 omits comments entirely
  */
 import { describe, it, expect, vi } from 'vitest';
 
@@ -37,12 +38,12 @@ describe('Task Get Command Options', () => {
     expect(includeComments?.flags).toContain('[n]');
   });
 
-  it('should describe --include-comments as opt-in with last-N support', () => {
+  it('should describe --include-comments default (latest) with last-N support', () => {
     const cli = createCLI();
     const taskCmd = cli.commands.find((c) => c.name() === 'task');
     const getCmd = taskCmd?.commands.find((c) => c.name() === 'get');
     const includeComments = getCmd?.options.find((o) => o.long === '--include-comments');
-    expect(includeComments?.description).toContain('omitted by default');
+    expect(includeComments?.description).toContain('latest comment');
     expect(includeComments?.description).toContain('last N');
   });
 

@@ -11,7 +11,7 @@ export function createTaskGetCommand(program: Command): void {
     .description('Get task by ID')
     .option(
       '--include-comments [n]',
-      'Include comments (optionally only the last N, e.g. --include-comments 5). Comments are omitted by default.',
+      'Include comments (optionally only the last N, e.g. --include-comments 5). Defaults to the latest comment only; use 0 to omit all comments.',
       parseInt
     )
     .action(async (id: string, options, command) => {
@@ -51,12 +51,21 @@ export function createTaskGetCommand(program: Command): void {
         }
 
         // Prune comments client-side to keep agent context small.
-        // Comments are omitted unless --include-comments is given;
-        // with a value N, only the last N comments are included.
-        if (includeComments === undefined) {
-          delete task.comments;
+        // Default: keep only the latest comment (as if --include-comments 1)
+        // so agents still see the most recent handoff/verification note
+        // without opting in. Bare --include-comments keeps the full history;
+        // --include-comments 0 omits comments entirely.
+        let commentLimit: number | undefined = 1;
+        if (includeComments === true) {
+          commentLimit = undefined; // bare flag = full history
         } else if (typeof includeComments === 'number') {
-          task.comments = takeLast(task.comments, includeComments);
+          commentLimit = includeComments;
+        }
+        const prunedComments = takeLast(task.comments, commentLimit);
+        if (prunedComments.length > 0) {
+          task.comments = prunedComments;
+        } else {
+          delete task.comments;
         }
 
         const formatter = createFormatter(config.outputFormat, {

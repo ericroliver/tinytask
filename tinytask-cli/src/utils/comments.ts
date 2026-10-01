@@ -1,7 +1,8 @@
 /**
  * Returns the last `limit` items of `items`. Used by comment-truncating
- * options (`task get --last-comment N`, `comment list --limit N`) to keep
- * only the most recent N entries.
+ * options (`task get --include-comments N`, `comment list --limit N`) and
+ * by `task get`'s default (latest-comment-only) behavior to keep only the
+ * most recent N entries.
  *
  * Rules:
  * - limit undefined/null → all items

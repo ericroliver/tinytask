@@ -238,6 +238,15 @@ Two new atomic task management tools that significantly reduce token consumption
 
 ## [Unreleased]
 
+### Changed
+- **CLI 0.8.0** — `task get` includes the latest comment by default (task #906 follow-up, field
+  feedback): agents kept forgetting to pass `--include-comments` after comments stopped being
+  included, so the most recent handoff/verification note was routinely missed. The no-flag
+  default is now equivalent to `--include-comments 1` (the newest comment only, server returns
+  ascending order so this is the last one). Bare `--include-comments` still returns the full
+  history, an explicit `--include-comments 0` omits comments entirely, and tasks without
+  comments get no `comments` key (unchanged). Client-side pruning only — no server/API changes.
+
 ### Added
 - **CLI 0.7.0** — context-saving output options (task #906): `task get` now omits comments by
   default (metadata + description only, ~88% smaller on comment-heavy tasks); pass
